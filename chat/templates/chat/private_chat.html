@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大周IM - 与 {{ other.username }} 私聊</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#ededed;height:100vh;display:flex;flex-direction:column;}
+.header{background:#2c2c2c;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.header h1{font-size:17px;font-weight:600;}
+.header .nav-links{font-size:13px;}
+.header .nav-links a{color:#9ecfff;margin-left:12px;text-decoration:none;}
+.header .nav-links a:hover{text-decoration:underline;}
+.chat-area{flex:1;display:flex;flex-direction:column;background:#ededed;max-width:900px;width:100%;margin:0 auto;min-height:0;}
+.messages{flex:1;overflow-y:auto;padding:16px 12px;}
+.messages::-webkit-scrollbar{width:6px;}
+.messages::-webkit-scrollbar-thumb{background:#c1c1c1;border-radius:3px;}
+.msg-row{display:flex;margin-bottom:16px;align-items:flex-start;}
+.msg-row.own{flex-direction:row-reverse;}
+.avatar{width:38px;height:38px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:600;user-select:none;overflow:hidden;}
+.avatar img{width:100%;height:100%;object-fit:cover;}
+.msg-body{max-width:65%;margin:0 8px;display:flex;flex-direction:column;min-width:0;}
+.msg-row.own .msg-body{align-items:flex-end;}
+.msg-row.other .msg-body{align-items:flex-start;}
+.meta{font-size:12px;color:#888;margin-bottom:4px;padding:0 2px;display:flex;align-items:center;gap:8px;}
+.meta .username{font-weight:600;}
+.meta .time{color:#aaa;}
+.meta .recall-btn{background:none;border:none;color:#dc3545;font-size:11px;cursor:pointer;padding:0;}
+.meta .recall-btn:hover{text-decoration:underline;}
+.bubble{position:relative;padding:9px 12px;border-radius:6px;font-size:14px;line-height:1.5;word-break:break-word;white-space:pre-wrap;max-width:100%;}
+.msg-row.other .bubble{background:#fff;color:#333;}
+.msg-row.own .bubble{background:#95ec69;color:#1a1a1a;}
+.bubble::before{content:'';position:absolute;top:12px;width:0;height:0;border:6px solid transparent;}
+.msg-row.other .bubble::before{left:-11px;border-right-color:#fff;}
+.msg-row.own .bubble::before{right:-11px;border-left-color:#95ec69;}
+.deleted-txt{color:#999;font-style:italic;font-size:13px;}
+.attachment{margin-top:6px;}
+.attachment img{max-width:220px;max-height:220px;border-radius:6px;display:block;cursor:pointer;}
+.attachment a{color:#1a73e8;font-size:13px;text-decoration:none;}
+.attachment a:hover{text-decoration:underline;}
+.reply-ref{background:rgba(0,0,0,0.06);border-left:3px solid #07c160;padding:5px 8px;margin-bottom:6px;border-radius:3px;font-size:12px;color:#666;text-align:left;}
+.msg-row.own .reply-ref{border-left-color:#5aad3a;}
+.reply-ref .r-user{color:#576b95;font-weight:600;}
+.reply-btn{font-size:11px;color:#576b95;cursor:pointer;background:none;border:none;padding:0;margin-top:4px;}
+.reply-btn:hover{text-decoration:underline;}
+.msg-row.own .reply-btn{align-self:flex-end;}
+.msg-row.other .reply-btn{align-self:flex-start;}
+.input-area{padding:10px 14px;border-top:1px solid #d8d8d8;background:#f7f7f7;display:flex;gap:8px;flex-direction:column;flex-shrink:0;position:relative;}
+.emoji-btn{background:none;border:none;font-size:18px;cursor:pointer;padding:0 6px;}
+.emoji-panel{position:absolute;bottom:70px;left:10px;background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px;width:264px;display:flex;flex-wrap:wrap;gap:4px;z-index:99;box-shadow:0 2px 10px rgba(0,0,0,0.1);}
+.emoji-panel span{font-size:22px;cursor:pointer;padding:2px;border-radius:4px;}
+.emoji-panel span:hover{background:#f0f0f0;}
+.reply-bar{font-size:12px;color:#666;background:#e8f0fe;border-radius:4px;padding:5px 10px;display:none;align-items:center;justify-content:space-between;}
+.reply-bar .cancel-reply{color:#d93025;cursor:pointer;font-weight:600;margin-left:10px;}
+.attach-bar{font-size:12px;color:#666;background:#f1f3f4;border-radius:4px;padding:4px 10px;display:none;align-items:center;justify-content:space-between;}
+.attach-bar .cancel-attach{color:#d93025;cursor:pointer;font-weight:600;margin-left:10px;}
+.input-row{display:flex;gap:8px;align-items:flex-end;}
+.input-area textarea{flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:5px;resize:none;font-size:14px;height:40px;line-height:1.4;background:#fff;outline:none;font-family:inherit;}
+.input-area textarea:focus{border-color:#07c160;}
+.attach-btn{padding:8px 14px;background:#f5f7fa;color:#1a73e8;border:1px solid #d0d7de;border-radius:6px;cursor:pointer;font-size:13px;}
+.attach-btn:hover{background:#e8f0fe;}
+.input-area button[type="button"].send{padding:8px 20px;background:#07c160;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;height:40px;}
+.input-area button[type="button"].send:hover{background:#06ad56;}
+.input-area button:disabled{background:#ccc;cursor:not-allowed;}
+.muted-notice{background:#fff3cd;color:#856404;padding:8px 16px;text-align:center;font-size:13px;}
+.user-title{color:#7b1fa2;font-size:12px;margin-left:4px;font-weight:normal;}
+.action-btn{font-size:11px;color:#576b95;cursor:pointer;background:none;border:none;padding:0;margin-top:4px;margin-left:8px;}
+.action-btn:hover{text-decoration:underline;}
+.msg-row.own .action-btn{align-self:flex-end;}
+.msg-row.other .action-btn{align-self:flex-start;}
+.search-bar{display:none;padding:8px 12px;background:#f0f0f0;border-bottom:1px solid #d8d8d8;gap:8px;align-items:center;}
+.search-bar.show{display:flex;}
+.search-bar input{flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;}
+.search-bar button{padding:6px 12px;background:#07c160;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;}
+.search-results{display:none;max-height:200px;overflow-y:auto;background:#fff;border-bottom:1px solid #eee;}
+.search-results.show{display:block;}
+.search-result-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px;}
+.search-result-item:hover{background:#e8f0fe;}
+.search-result-item .sr-user{font-weight:600;color:#333;}
+.search-result-item .sr-content{color:#666;margin-top:2px;}
+.search-result-item .sr-time{color:#aaa;font-size:11px;}
+.header button{background:none;border:none;color:#9ecfff;font-size:13px;cursor:pointer;margin-left:12px;padding:0;}
+.header button:hover{text-decoration:underline;}
+
+.user-profile-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center;z-index:9999;}
+.user-profile-modal.show{display:flex;}
+.user-profile-card{background:#fff;border-radius:12px;padding:24px;min-width:300px;max-width:360px;box-shadow:0 4px 20px rgba(0,0,0,0.15);position:relative;}
+.user-profile-close{position:absolute;top:12px;right:16px;cursor:pointer;font-size:20px;color:#999;}
+.user-profile-close:hover{color:#333;}
+.user-profile-avatar{width:64px;height:64px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:bold;}
+.user-profile-name{text-align:center;font-size:18px;font-weight:bold;margin-bottom:4px;}
+.user-profile-title{text-align:center;color:#7b1fa2;font-size:13px;margin-bottom:12px;}
+.user-profile-info{border-top:1px solid #eee;padding-top:12px;}
+.user-profile-info-row{display:flex;margin-bottom:8px;font-size:14px;}
+.user-profile-info-label{color:#888;min-width:60px;}
+.user-profile-info-value{color:#333;flex:1;}
+.msg-read-status{font-size:11px;color:#999;margin-top:2px;text-align:right;}
+.msg-read-status.read{color:#4caf50;}
+.typing-indicator{display:none;padding:8px 14px;font-size:13px;color:#888;font-style:italic;}
+.typing-indicator.show{display:block;}
+.date-divider{text-align:center;margin:16px 0;position:relative;}
+.date-divider span{background:#e0e0e0;color:#888;font-size:11px;padding:2px 10px;border-radius:10px;}
+.avatar{cursor:pointer;}
+.forward-from{font-size:11px;color:#999;margin-bottom:4px;text-align:left;}
+.msg-row.own .forward-from{align-self:flex-end;}
+.forward-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center;z-index:9999;}
+.forward-modal.show{display:flex;}
+.forward-card{background:#fff;border-radius:12px;width:320px;max-height:420px;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.15);}
+.forward-card-header{padding:14px 16px;border-bottom:1px solid #eee;font-size:15px;font-weight:600;color:#333;}
+.forward-list{flex:1;overflow-y:auto;padding:6px 0;}
+.forward-section{font-size:11px;color:#999;padding:8px 16px 2px;}
+.forward-item{padding:9px 16px;cursor:pointer;font-size:14px;color:#333;display:flex;align-items:center;gap:10px;}
+.forward-item:hover{background:#f0f0f0;}
+.forward-item .fi-ava{width:30px;height:30px;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;}
+.forward-card-footer{padding:10px 16px;border-top:1px solid #eee;text-align:right;}
+.forward-card-footer button{padding:6px 18px;background:#f5f5f5;border:1px solid #ddd;border-radius:6px;cursor:pointer;font-size:13px;}
+.forward-card-footer button:hover{background:#ececec;}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>{{ other.username }}</h1>
+<div class="nav-links">
+<button onclick="togglePin()" id="pinBtn">{% if is_pinned %}取消置顶{% else %}置顶{% endif %}</button>
+<button onclick="toggleMute()" id="muteBtn">{% if is_chat_muted %}取消免打扰{% else %}免打扰{% endif %}</button>
+<button onclick="toggleSearch()" id="searchBtn">搜索</button>
+<a href="/favorites/">收藏</a>
+<a href="/private/">私聊列表</a>
+<a href="/chat/">公共聊天室</a>
+<a href="/logout/">退出</a>
+</div>
+</div>
+{% if is_muted %}<div class="muted-notice">您已被管理员禁言，无法发送消息</div>{% endif %}
+<div class="chat-area">
+<div class="search-bar" id="searchBar">
+<input type="text" id="searchInput" placeholder="搜索聊天记录..." oninput="doSearch()">
+<button onclick="closeSearch()">关闭</button>
+</div>
+<div class="search-results" id="searchResults"></div>
+<div class="messages" id="messages">
+{% for msg in messages %}
+<div class="msg-row {% if msg.sender == request.user %}own{% else %}other{% endif %}" data-id="{{ msg.id }}" data-senderid="{{ msg.sender.id }}">
+<div class="avatar" onclick="showUserProfile('{% if msg.sender == request.user %}{{ request.user.username|escapejs }}{% else %}{{ other.username|escapejs }}{% endif %}')" style="background:hsl({% if msg.sender == request.user %}{{ request.user.id|stringformat:'d'|last }}{% else %}{{ other.id|stringformat:'d'|last }}{% endif %}0,60%,55%)">{% if msg.sender == request.user %}{{ request.user.username|first|upper }}{% else %}{{ other.username|first|upper }}{% endif %}</div>
+<div class="msg-body">
+<div class="meta">
+<span class="username">{% if msg.sender == request.user %}{{ request.user.username }}{% if request.user.profile.user_title %}<span class="user-title">@{{ request.user.profile.user_title }}</span>{% endif %}{% else %}{{ other.username }}{% if other.profile.user_title %}<span class="user-title">@{{ other.profile.user_title }}</span>{% endif %}{% endif %}</span>
+<span class="time">{{ msg.timestamp|date:"H:i" }}</span>
+{% if msg.sender == request.user and not msg.is_deleted %}<button class="recall-btn" onclick="recallMsg({{ msg.id }})">撤回</button>{% endif %}
+</div>
+{% if msg.is_deleted %}
+<div class="bubble deleted-txt">消息已撤回</div>
+{% else %}
+{% if msg.reply_to %}
+<div class="reply-ref"><span class="r-user">回复 {{ msg.reply_to.sender.username }}</span>：{{ msg.reply_to.content|truncatechars:100 }}</div>
+{% endif %}
+{% if msg.forwarded_from %}
+<div class="forward-from">{{ msg.forwarded_from }}</div>
+{% endif %}
+<div class="bubble">{{ msg.content }}</div>
+{% if msg.attachment %}
+<div class="attachment" data-url="{{ msg.attachment.url }}" data-name="{{ msg.attachment_name|default:'' }}" data-type="{{ msg.attachment_type }}"></div>
+{% endif %}
+<button class="reply-btn" onclick="startReply({{ msg.id }}, '{% if msg.sender == request.user %}{{ request.user.username|escapejs }}{% else %}{{ other.username|escapejs }}{% endif %}')">回复</button>
+<button class="action-btn" onclick="copyMsg({{ msg.id }}, this)">复制</button>
+<button class="action-btn" onclick="favoriteMsg({{ msg.id }}, 'private')">收藏</button>
+<button class="action-btn" onclick="forwardMsg({{ msg.id }}, 'private')">转发</button>
+{% if msg.sender == request.user and not msg.is_deleted %}<div class="msg-read-status{% if msg.is_read %} read{% endif %}">{% if msg.is_read %}已读{% else %}未读{% endif %}</div>{% endif %}
+{% endif %}
+</div>
+</div>
+{% endfor %}
+</div>
+<div class="typing-indicator" id="typingIndicator">对方正在输入...</div>
+<div class="input-area">
+<div class="emoji-panel" id="emojiPanel" style="display:none;">
+<span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span><span onclick="insertEmoji('')"></span>
+</div>
+<div class="reply-bar" id="replyBar"><span id="replyText"></span><span class="cancel-reply" onclick="cancelReply()">取消回复 </span></div>
+<div class="attach-bar" id="attachBar"><span id="attachText"></span><span class="cancel-attach" onclick="cancelAttach()">取消附件 </span></div>
+<div class="input-row">
+<button class="emoji-btn" onclick="toggleEmoji()">表情</button>
+<label class="attach-btn"><input type="file" id="attachInput" style="display:none;" onchange="selectAttach(this)">附件</label>
+<textarea id="msgInput" placeholder="输入消息，按 Enter 发送..." {% if is_muted %}disabled{% endif %}></textarea>
+
+<button type="button" class="send" id="sendBtn" onclick="sendMessage()" {% if is_muted %}disabled{% endif %}>发送</button>
+</div>
+</div>
+</div>
+<script src="/static/chat/js/attachment.js?v=20260922a"></script>
+<script>
+const csrfToken='{{ csrf_token }}';
+const chatId={{ chat.id }};
+const currentUsername='{{ request.user.username|escapejs }}';
+const otherUsername='{{ other.username|escapejs }}';
+const currentUserId={{ request.user.id }};
+const otherUserId={{ other.id }};
+let lastMsgId=0;
+let replyToId=null;
+let attachFile=null;
+const messagesEl=document.getElementById('messages');
+const msgInput=document.getElementById('msgInput');
+const sendBtn=document.getElementById('sendBtn');
+const replyBar=document.getElementById('replyBar');
+const replyText=document.getElementById('replyText');
+const attachBar=document.getElementById('attachBar');
+const attachText=document.getElementById('attachText');
+const emojiPanel=document.getElementById('emojiPanel');
+const isMuted={{ is_muted|yesno:"true,false" }};
+function scrollBottom(){messagesEl.scrollTop=messagesEl.scrollHeight;}
+function escapeHtml(text){const div=document.createElement('div');div.textContent=text;return div.innerHTML;}
+function avatarColor(userId){const lastDigit=(userId%10);return 'hsl('+(lastDigit*10)+',60%,55%)';}
+function toggleEmoji(){emojiPanel.style.display=emojiPanel.style.display==='none'?'flex':'none';}
+function insertEmoji(e){msgInput.value+=e;msgInput.focus();emojiPanel.style.display='none';}
+function startReply(id,username){replyToId=id;replyBar.style.display='flex';replyText.textContent='正在回复 '+username+'...';msgInput.focus();}
+function cancelReply(){replyToId=null;replyBar.style.display='none';}
+function selectAttach(input){if(input.files&&input.files[0]){attachFile=input.files[0];attachBar.style.display='flex';attachText.textContent='已选择: '+attachFile.name;}}
+function cancelAttach(){attachFile=null;const ai=document.getElementById('attachInput');if(ai)ai.value='';attachBar.style.display='none';}
+function buildReplyHtml(r){if(!r)return '';return '<div class="reply-ref"><span class="r-user">回复 '+escapeHtml(r.username)+'</span>：'+escapeHtml(r.content)+'</div>';}
+function buildMessageHtml(m){
+const isOwn=m.is_own!==undefined?m.is_own:(m.username===currentUsername);
+const rowCls=isOwn?'own':'other';
+const uid=isOwn?currentUserId:otherUserId;
+const uname=isOwn?currentUsername:otherUsername;
+const firstChar=escapeHtml(uname.charAt(0).toUpperCase());
+const avatarInner = m.avatar_url ? '<img src="'+m.avatar_url+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">' : firstChar;
+if(m.is_deleted){
+return '<div class="msg-row '+rowCls+'" data-id="'+m.id+'"><div class="avatar" style="background:'+avatarColor(uid)+'">'+avatarInner+'</div><div class="msg-body"><div class="meta"><span class="username">'+escapeHtml(uname)+(m.user_title?'<span class="user-title">@'+escapeHtml(m.user_title)+'</span>':'')+'</span></div><div class="bubble deleted-txt">消息已撤回</div></div></div>';
+}
+if(m.deleted_by_sender){
+if(isOwn)return '<div class="msg-row '+rowCls+'" data-id="'+m.id+'"><div class="avatar" style="background:'+avatarColor(uid)+'">'+avatarInner+'</div><div class="msg-body"><div class="meta"><span class="username">'+escapeHtml(uname)+(m.user_title?'<span class="user-title">@'+escapeHtml(m.user_title)+'</span>':'')+'</span></div><div class="bubble deleted-txt">你已删除此消息</div></div></div>';
+}
+let recallBtn='';
+if(isOwn)recallBtn='<button class="recall-btn" onclick="recallMsg('+m.id+')">撤回</button>'+(isOwn?'<button class="action-btn" onclick="deleteMsg('+m.id+')">删除</button>':'');
+return '<div class="msg-row '+rowCls+'" data-id="'+m.id+'">'
++'<div class="avatar" onclick="showUserProfile(\''+uname+'\')" style="background:'+avatarColor(uid)+'">'+avatarInner+'</div>'
++'<div class="msg-body">'
++'<div class="meta"><span class="username">'+escapeHtml(uname)+(m.user_title?'<span class="user-title">@'+escapeHtml(m.user_title)+'</span>':'')+'</span><span class="time">'+(m.time||'')+'</span>'+recallBtn+'</div>'
++buildReplyHtml(m.reply_to)
++(m.forwarded_from?'<div class="forward-from">'+escapeHtml(m.forwarded_from)+'</div>':'')
++'<div class="bubble">'+escapeHtml(m.content)+'</div>'
++buildAttachmentHtml(m.attachment)
++'<button class="reply-btn" onclick="startReply('+m.id+',\''+uname.replace(/'/g,"\\'")+'\')">回复</button>'
++'<button class="action-btn" onclick="copyMsg('+m.id+', this)">复制</button>'
++'<button class="action-btn" onclick="favoriteMsg('+m.id+', \'private\')">收藏</button>'
++'<button class="action-btn" onclick="forwardMsg('+m.id+', \'private\')">转发</button>'
++(isOwn?'<div class="msg-read-status'+(m.is_read?' read':'')+'>'+(m.is_read?'已读':'未读')+'</div>':'')
++'</div></div>';
+}
+async function fetchMessages(){
+try{
+const resp=await fetch('/api/private/'+chatId+'/messages/?last_id='+lastMsgId);
+const data=await resp.json();
+let hasNew=false;
+data.messages.forEach(m=>{
+if(document.querySelector('.msg-row[data-id="'+m.id+'"]'))return;
+if(m.id>lastMsgId)lastMsgId=m.id;
+messagesEl.insertAdjacentHTML('beforeend',buildMessageHtml(m));
+hasNew=true;
+});
+if(hasNew)scrollBottom();
+}catch(e){}
+}
+async function recallMsg(id){
+if(!confirm('确定撤回这条消息吗？'))return;
+try{
+const fd=new FormData();
+fd.append('message_id',id);
+fd.append('csrfmiddlewaretoken',csrfToken);
+const resp=await fetch('/api/private/'+chatId+'/recall/'+id+'/',{method:'POST',body:fd,credentials:'same-origin'});
+if(resp.ok){fetchMessages();}
+else{const err=await resp.json();alert(err.error||'撤回失败');}
+}catch(e){alert('网络错误');}
+}
+async function deleteMsg(id){
+if(!confirm('删除后仅你自己看不到此消息，对方仍可见。确定删除？'))return;
+try{
+const fd=new FormData();
+fd.append('csrfmiddlewaretoken',csrfToken);
+const resp=await fetch('/api/private/'+chatId+'/delete/'+id+'/',{method:'POST',body:fd,credentials:'same-origin'});
+if(resp.ok){fetchMessages();}
+else{const err=await resp.json();alert(err.error||'删除失败');}
+}catch(e){alert('网络错误');}
+}
+async function sendMessage(){
+const content=msgInput.value.trim();
+if((!content&&!attachFile)||isMuted)return;
+sendBtn.disabled=true;
+try{
+const formData=new FormData();
+if(content)formData.append('content',content);
+formData.append('csrfmiddlewaretoken',csrfToken);
+if(replyToId)formData.append('reply_to_id',replyToId);
+if(attachFile)formData.append('attachment',attachFile);
+const resp=await fetch('/api/private/'+chatId+'/send/',{method:'POST',body:formData,credentials:'same-origin'});
+if(resp.ok){
+msgInput.value='';
+cancelReply();
+cancelAttach();
+fetchMessages();
+}else{
+const err=await resp.json();
+alert(err.error||'发送失败');
+}
+}catch(e){alert('网络错误');}
+sendBtn.disabled=false;
+}
+msgInput.addEventListener('keydown',e=>{
+if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
+});
+function initLastMsgId(){
+const rows=messagesEl.querySelectorAll('.msg-row[data-id]');
+let maxId=0;
+rows.forEach(row=>{
+const id=parseInt(row.getAttribute('data-id'),10);
+if(id>maxId)maxId=id;
+});
+lastMsgId=maxId;
+}
+async function togglePin(){
+try{
+const fd=new FormData();
+fd.append('csrfmiddlewaretoken',csrfToken);
+const resp=await fetch('/api/private/'+chatId+'/pin/',{method:'POST',body:fd,credentials:'same-origin'});
+const data=await resp.json();
+document.getElementById('pinBtn').textContent=data.is_pinned?'取消置顶':'置顶';
+}catch(e){alert('网络错误');}
+}
+async function toggleMute(){
+try{
+const fd=new FormData();
+fd.append('csrfmiddlewaretoken',csrfToken);
+const resp=await fetch('/api/private/'+chatId+'/mute/',{method:'POST',body:fd,credentials:'same-origin'});
+const data=await resp.json();
+document.getElementById('muteBtn').textContent=data.is_muted?'取消免打扰':'免打扰';
+}catch(e){alert('网络错误');}
+}
+function toggleSearch(){
+var bar=document.getElementById('searchBar');
+var results=document.getElementById('searchResults');
+if(bar.classList.contains('show')){
+bar.classList.remove('show');
+results.classList.remove('show');
+}else{
+bar.classList.add('show');
+document.getElementById('searchInput').focus();
+}
+}
+function closeSearch(){
+document.getElementById('searchBar').classList.remove('show');
+document.getElementById('searchResults').classList.remove('show');
+document.getElementById('searchInput').value='';
+document.getElementById('searchResults').innerHTML='';
+}
+var searchDebounce=null;
+async function doSearch(){
+clearTimeout(searchDebounce);
+var q=document.getElementById('searchInput').value.trim();
+var resultsEl=document.getElementById('searchResults');
+if(!q){resultsEl.classList.remove('show');resultsEl.innerHTML='';return;}
+searchDebounce=setTimeout(async function(){
+try{
+const resp=await fetch('/api/private/'+chatId+'/search/?q='+encodeURIComponent(q));
+const data=await resp.json();
+if(data.messages&&data.messages.length>0){
+resultsEl.innerHTML=data.messages.map(function(m){
+return '<div class="search-result-item" onclick="locateMsg('+m.id+')"><span class="sr-user">'+escapeHtml(m.username)+'</span> <span class="sr-time">'+(m.timestamp||'')+'</span><div class="sr-content">'+escapeHtml(m.content)+'</div></div>';
+}).join('');
+resultsEl.classList.add('show');
+}else{
+resultsEl.innerHTML='<div class="search-result-item" style="color:#999;">未找到匹配消息</div>';
+resultsEl.classList.add('show');
+}
+}catch(e){}
+},300);
+}
+function locateMsg(id){
+var row=document.querySelector('.msg-row[data-id="'+id+'"]');
+if(row){
+row.scrollIntoView({behavior:'smooth',block:'center'});
+row.style.background='#fff3cd';
+setTimeout(function(){row.style.background='';},2000);
+}else{
+alert('消息可能尚未加载，正在刷新...');
+fetchMessages().then(function(){
+var r=document.querySelector('.msg-row[data-id="'+id+'"]');
+if(r){
+r.scrollIntoView({behavior:'smooth',block:'center'});
+r.style.background='#fff3cd';
+setTimeout(function(){r.style.background='';},2000);
+}
+});
+}
+}
+function copyMsg(id,btn){
+var row=btn.closest('.msg-row');
+var bubble=row?row.querySelector('.bubble'):null;
+if(!bubble)return;
+var text=bubble.textContent;
+if(navigator.clipboard&&navigator.clipboard.writeText){
+navigator.clipboard.writeText(text).then(function(){
+btn.textContent='已复制';
+setTimeout(function(){btn.textContent='复制';},1500);
+});
+}else{
+var ta=document.createElement('textarea');
+ta.value=text;
+document.body.appendChild(ta);
+ta.select();
+document.execCommand('copy');
+document.body.removeChild(ta);
+btn.textContent='已复制';
+setTimeout(function(){btn.textContent='复制';},1500);
+}
+}
+async function favoriteMsg(messageId,messageType){
+try{
+var fd=new FormData();
+fd.append('message_type',messageType);
+fd.append('message_id',messageId);
+fd.append('csrfmiddlewaretoken',csrfToken);
+var resp=await fetch('/api/favorite/add/',{method:'POST',body:fd,credentials:'same-origin'});
+var data=await resp.json();
+if(data.status==='ok'){alert('已收藏');}
+else{alert(data.error||'收藏失败');}
+}catch(e){alert('网络错误');}
+}
+initLastMsgId();
+scrollBottom();
+setInterval(fetchMessages,2000);
+
+// 打字指示器
+let typingTimer=null;
+msgInput.addEventListener('input',function(){
+var ind=document.getElementById('typingIndicator');
+if(typingTimer)clearTimeout(typingTimer);
+// 发送打字状态
+fetch('/api/private/'+chatId+'/typing/',{method:'POST',headers:{'X-CSRFToken':csrfToken},credentials:'same-origin'}).catch(function(){});
+typingTimer=setTimeout(function(){},3000);
+});
+async function pollTyping(){
+try{
+var resp=await fetch('/api/private/'+chatId+'/typing/');
+var data=await resp.json();
+var ind=document.getElementById('typingIndicator');
+if(data.is_typing){ind.classList.add('show');}
+else{ind.classList.remove('show');}
+}catch(e){}
+}
+setInterval(pollTyping,2000);
+
+// 日期分隔
+function formatDateDivider(ts){
+var d=new Date(ts*1000);
+var now=new Date();
+var today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+var msgDate=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+var diffDays=Math.round((today-msgDate)/(1000*60*60*24));
+if(diffDays===0)return '今天';
+if(diffDays===1)return '昨天';
+return (d.getFullYear()===now.getFullYear()?(d.getMonth()+1)+'月'+d.getDate()+'日':d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日');
+}
+function maybeAddDateDivider(m){
+if(!m.created_at)return;
+var divider='<div class="date-divider"><span>'+formatDateDivider(m.created_at)+'</span></div>';
+messagesEl.insertAdjacentHTML('beforeend',divider);
+}
+// 包装 fetchMessages 加入日期分隔
+var origFetch=fetchMessages;
+fetchMessages=async function(){
+try{
+var resp=await fetch('/api/private/'+chatId+'/messages/?last_id='+lastMsgId);
+var data=await resp.json();
+var hasNew=false;
+var lastDividerDate=null;
+data.messages.forEach(function(m){
+if(document.querySelector('.msg-row[data-id="'+m.id+'"]'))return;
+if(m.id>lastMsgId)lastMsgId=m.id;
+// 检查是否需要日期分隔
+if(m.created_at){
+var d=new Date(m.created_at*1000).toDateString();
+if(lastDividerDate!==d){
+messagesEl.insertAdjacentHTML('beforeend','<div class="date-divider"><span>'+formatDateDivider(m.created_at)+'</span></div>');
+lastDividerDate=d;
+}
+}
+messagesEl.insertAdjacentHTML('beforeend',buildMessageHtml(m));
+hasNew=true;
+});
+if(hasNew)scrollBottom();
+}catch(e){}
+};
+</script>
+
+<div class="user-profile-modal" id="userProfileModal" onclick="if(event.target===this)closeUserProfile()">
+    <div class="user-profile-card">
+        <span class="user-profile-close" onclick="closeUserProfile()">&times;</span>
+        <div class="user-profile-avatar" id="upmAvatar"></div>
+        <div class="user-profile-name" id="upmName"></div>
+        <div class="user-profile-title" id="upmTitle"></div>
+        <div class="user-profile-info">
+            <div class="user-profile-info-row">
+                <span class="user-profile-info-label">昵称</span>
+                <span class="user-profile-info-value" id="upmNickname"></span>
+            </div>
+            <div class="user-profile-info-row">
+                <span class="user-profile-info-label">个性签名</span>
+                <span class="user-profile-info-value" id="upmSignature"></span>
+            </div>
+            <div class="user-profile-info-row">
+                <span class="user-profile-info-label">自定义ID</span>
+                <span class="user-profile-info-value" id="upmCustomId"></span>
+            </div>
+            <div class="user-profile-info-row">
+                <span class="user-profile-info-label">注册时间</span>
+                <span class="user-profile-info-value" id="upmDateJoined"></span>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+async function showUserProfile(username){
+    try{
+        const resp=await fetch('/api/user_info/'+encodeURIComponent(username)+'/');
+        const data=await resp.json();
+        if(data.error){alert(data.error);return;}
+        document.getElementById('upmAvatar').textContent=data.username.charAt(0).toUpperCase();
+        document.getElementById('upmAvatar').style.background=avatarColor(data.username);
+        document.getElementById('upmName').textContent=data.username;
+        document.getElementById('upmTitle').textContent=data.user_title?'@'+data.user_title:'';
+        document.getElementById('upmNickname').textContent=data.nickname||'未设置';
+        document.getElementById('upmSignature').textContent=data.signature||'未设置';
+        document.getElementById('upmCustomId').textContent=data.custom_id||'未设置';
+        document.getElementById('upmDateJoined').textContent=data.date_joined||'未知';
+        document.getElementById('userProfileModal').classList.add('show');
+    }catch(e){alert('获取用户信息失败');}
+}
+function closeUserProfile(){
+    document.getElementById('userProfileModal').classList.remove('show');
+}
+</script>
+
+<div class="forward-modal" id="forwardModal" onclick="if(event.target===this)closeForwardModal()">
+    <div class="forward-card">
+        <div class="forward-card-header">转发消息</div>
+        <div class="forward-list" id="forwardList"><div class="forward-section">加载中...</div></div>
+        <div class="forward-card-footer">
+            <button onclick="closeForwardModal()">取消</button>
+        </div>
+    </div>
+</div>
+<script>
+let forwardMsgId=null, forwardSourceType=null;
+async function forwardMsg(msgId, sourceType){
+    forwardMsgId=msgId;
+    forwardSourceType=sourceType;
+    document.getElementById('forwardModal').classList.add('show');
+    await loadForwardTargets();
+}
+async function loadForwardTargets(){
+    const listEl=document.getElementById('forwardList');
+    listEl.innerHTML='<div class="forward-section">加载中...</div>';
+    let html='';
+    try{
+        const resp=await fetch('/api/private/list/');
+        const data=await resp.json();
+        if(data.chats && data.chats.length>0){
+            html+='<div class="forward-section">好友</div>';
+            data.chats.forEach(function(c){
+                const ch=(c.other_id%10)*10;
+                html+='<div class="forward-item" onclick="doForward('+c.id+', \'private\')"><div class="fi-ava" style="background:hsl('+ch+',55%,55%)">'+escapeHtml(c.other_username.charAt(0).toUpperCase())+'</div><span>'+escapeHtml(c.other_username)+'</span></div>';
+            });
+        }
+    }catch(e){}
+    if(!html) html='<div class="forward-section">暂无可转发的好友</div>';
+    listEl.innerHTML=html;
+}
+async function doForward(targetId, targetType){
+    if(forwardMsgId==null) return;
+    try{
+        const fd=new FormData();
+        fd.append('source_type', forwardSourceType);
+        fd.append('message_id', forwardMsgId);
+        fd.append('target_type', targetType);
+        fd.append('target_id', targetId);
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        const resp=await fetch('/api/forward/', {method:'POST', body:fd, credentials:'same-origin'});
+        const data=await resp.json();
+        if(data.status==='ok'){
+            closeForwardModal();
+            alert('转发成功');
+        }else{
+            alert(data.error||'转发失败');
+        }
+    }catch(e){alert('网络错误');}
+}
+function closeForwardModal(){
+    document.getElementById('forwardModal').classList.remove('show');
+    forwardMsgId=null;
+    forwardSourceType=null;
+}
+</script>
+
+</body>
+</html>

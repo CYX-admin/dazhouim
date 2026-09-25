@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ group.name }} - 群成员 - 大周IM</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; flex-direction: column; }
+.header { background: #1a73e8; color: #fff; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 16px; }
+.header a { color: #fff; margin-left: 12px; text-decoration: underline; font-size: 13px; }
+.container { max-width: 600px; margin: 20px auto; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); width: 100%; }
+.add-section { padding: 16px 20px; border-bottom: 1px solid #eee; }
+.add-section h3 { font-size: 14px; color: #333; margin-bottom: 10px; }
+.add-row { display: flex; gap: 8px; }
+.add-row input { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+.add-row button { padding: 8px 16px; background: #1a73e8; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.add-row button:hover { background: #1557b0; }
+.section-title { padding: 10px 20px; font-size: 13px; color: #666; background: #fafafa; }
+.member-item { padding: 12px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.member-info { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 600; }
+.member-name { font-size: 14px; color: #333; font-weight: 500; }
+.role-tag { font-size: 11px; padding: 2px 6px; border-radius: 3px; margin-left: 6px; }
+.role-owner { background: #ff6b35; color: #fff; }
+.role-admin { background: #f5a623; color: #fff; }
+.role-member { background: #e0e0e0; color: #666; }
+.member-actions { display: flex; gap: 6px; }
+.member-actions button { padding: 4px 10px; font-size: 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; color: #555; }
+.member-actions button:hover { background: #f5f5f5; }
+.member-actions .btn-danger { color: #d32f2f; border-color: #ffcdd2; }
+.member-actions .btn-danger:hover { background: #ffebee; }
+.muted-tag { font-size: 11px; padding: 2px 6px; border-radius: 3px; background: #fce4ec; color: #c62828; margin-left: 6px; }
+.member-actions .btn-mute { color: #e65100; border-color: #ffe0b2; }
+.member-actions .btn-mute:hover { background: #fff3e0; }
+.member-actions .btn-unmute { color: #2e7d32; border-color: #c8e6c9; }
+.member-actions .btn-unmute:hover { background: #e8f5e9; }
+.leave-section { padding: 16px 20px; text-align: center; }
+.leave-btn { padding: 8px 20px; background: #fff; color: #d32f2f; border: 1px solid #ffcdd2; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.leave-btn:hover { background: #ffebee; }
+.tip { font-size: 12px; color: #999; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="header">
+<h1>{{ group.name }} - 群成员（{{ members|length }}）</h1>
+<div><a href="/group/{{ group.id }}/">返回聊天</a><a href="/groups/">群列表</a></div>
+</div>
+<div class="container">
+{% if is_admin %}
+<div class="add-section">
+<h3>添加成员</h3>
+<div class="add-row">
+<select id="userSelect" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;background:#fff;">
+<option value="">-- 选择用户 --</option>
+</select>
+<button onclick="addMember()">添加</button>
+</div>
+<div class="tip">从下拉框选择用户添加，仅显示未加入群的用户</div>
+</div>
+{% endif %}
+<div class="section-title">成员列表</div>
+{% for m in members %}
+<div class="member-item" data-user-id="{{ m.user.id }}">
+<div class="member-info">
+<div class="avatar" style="background:hsl({{ m.user.id|stringformat:'d'|make_list|first|add:'0' }}0,60%,50%);">{{ m.user.username|first|upper }}</div>
+<span class="member-name">{{ m.user.username }}
+<span class="role-tag role-{{ m.role }}">{% if m.role == 'owner' %}群主{% elif m.role == 'admin' %}管理员{% else %}成员{% endif %}</span>
+{% if m.is_currently_muted %}<span class="muted-tag">已禁言</span>{% endif %}
+</span>
+</div>
+<div class="member-actions">
+{% if is_owner and m.user != request.user %}
+<button class="btn-transfer" onclick="transferOwner({{ m.user.id }}, '{{ m.user.username|escapejs }}')">转让群主</button>
+{% endif %}
+{% if is_owner and m.role == 'member' %}
+<button onclick="setAdmin({{ m.user.id }}, 'set')">设为管理员</button>
+{% elif is_owner and m.role == 'admin' %}
+<button onclick="setAdmin({{ m.user.id }}, 'remove')">取消管理员</button>
+{% endif %}
+{% if is_admin and m.role != 'owner' and m.user != request.user %}
+{% if m.role == 'admin' and not is_owner %}{% else %}
+<button class="btn-danger" onclick="removeMember({{ m.user.id }})">移除</button>
+{% endif %}
+{% endif %}
+{% if is_owner or is_admin %}
+{% if m.role != 'owner' and m.user != request.user %}
+{% if is_owner or m.role == 'member' %}
+{% if m.is_currently_muted %}
+<button class="btn-unmute" onclick="unmuteMember({{ m.user.id }}, '{{ m.user.username|escapejs }}')">解除禁言</button>
+{% else %}
+<button class="btn-mute" onclick="muteMember({{ m.user.id }}, '{{ m.user.username|escapejs }}')">禁言</button>
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+</div>
+</div>
+{% endfor %}
+{% if not is_owner %}
+<div class="leave-section">
+<button class="leave-btn" onclick="leaveGroup()">退出群聊</button>
+</div>
+{% endif %}
+</div>
+<script>
+const csrfToken = '{{ csrf_token }}';
+const groupId = {{ group.id }};
+const memberUsernames = [{% for m in members %}'{{ m.user.username|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+
+async function loadUserSelect() {
+    try {
+        const resp = await fetch('/api/users/');
+        const data = await resp.json();
+        const sel = document.getElementById('userSelect');
+        sel.innerHTML = '<option value="">-- 选择用户 --</option>';
+        data.users.forEach(u => {
+            if (memberUsernames.indexOf(u.username) === -1) {
+                const opt = document.createElement('option');
+                opt.value = u.username;
+                opt.textContent = u.username + (u.nickname ? ' (' + u.nickname + ')' : '') + (u.online ? ' ●在线' : '');
+                sel.appendChild(opt);
+            }
+        });
+    } catch(e) { console.error('加载用户列表失败', e); }
+}
+loadUserSelect();
+
+async function addMember() {
+    const username = document.getElementById('userSelect').value;
+    if (!username) { alert('请选择要添加的用户'); return; }
+    try {
+        const fd = new FormData();
+        fd.append('username', username);
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        const resp = await fetch('/api/group/' + groupId + '/add-member/', {method:'POST', body:fd, credentials:'same-origin'});
+        const data = await resp.json();
+        if (resp.ok) { alert('已添加 ' + data.username); location.reload(); }
+        else { alert(data.error || '添加失败'); }
+    } catch(e) { alert('网络错误'); }
+}
+
+async function removeMember(userId) {
+    if (!confirm('确定移除该成员吗？')) return;
+    try {
+        const fd = new FormData();
+        fd.append('user_id', userId);
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        const resp = await fetch('/api/group/' + groupId + '/remove-member/', {method:'POST', body:fd, credentials:'same-origin'});
+        const data = await resp.json();
+        if (resp.ok) { location.reload(); }
+        else { alert(data.error || '移除失败'); }
+    } catch(e) { alert('网络错误'); }
+}
+
+async function setAdmin(userId, action) {
+    const actionText = action === 'set' ? '设为管理员' : '取消管理员';
+    if (!confirm('确定' + actionText + '吗？')) return;
+    try {
+        const fd = new FormData();
+        fd.append('user_id', userId);
+        fd.append('action', action);
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        const resp = await fetch('/api/group/' + groupId + '/set-admin/', {method:'POST', body:fd, credentials:'same-origin'});
+        const data = await resp.json();
+        if (resp.ok) { location.reload(); }
+        else { alert(data.error || '操作失败'); }
+    } catch(e) { alert('网络错误'); }
+}
+
+async function leaveGroup() {
+    if (!confirm('确定退出该群聊吗？')) return;
+    try {
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        const resp = await fetch('/api/group/' + groupId + '/leave/', {method:'POST', body:fd, credentials:'same-origin'});
+        const data = await resp.json();
+        if (resp.ok) { location.href = '/groups/'; }
+        else { alert(data.error || '退出失败'); }
+    } catch(e) { alert('网络错误'); }
+}
+
+async function transferOwner(userId, username) {
+    if (!confirm('确定将群主转让给 ' + username + ' 吗？转让后你将变为普通成员。')) return;
+    try {
+        const fd = new FormData();
+        fd.append('user_id', userId);
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        const resp = await fetch('/api/group/' + groupId + '/transfer/', {method:'POST', body:fd, credentials:'same-origin'});
+        const data = await resp.json();
+        if (resp.ok) { alert('已转让给 ' + data.new_owner); location.reload(); }
+        else { alert(data.error || '转让失败'); }
+    } catch(e) { alert('网络错误'); }
+}
+async function muteMember(userId, username) {
+    var input = prompt('请输入禁言分钟数（0=永久）：', '0');
+    if (input === null) return;
+    var duration = parseInt(input, 10);
+    if (isNaN(duration) || duration < 0) { alert('请输入有效的分钟数'); return; }
+    try {
+        const fd = new FormData();
+        fd.append('user_id', userId);
+        fd.append('duration', duration);
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        const resp = await fetch('/api/group/' + groupId + '/mute-member/', {method:'POST', body:fd, credentials:'same-origin'});
+        const data = await resp.json();
+        if (resp.ok) { location.reload(); }
+        else { alert(data.error || '操作失败'); }
+    } catch(e) { alert('网络错误'); }
+}
+async function unmuteMember(userId, username) {
+    if (!confirm('确定解除 ' + username + ' 的禁言吗？')) return;
+    try {
+        const fd = new FormData();
+        fd.append('user_id', userId);
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        const resp = await fetch('/api/group/' + groupId + '/unmute-member/', {method:'POST', body:fd, credentials:'same-origin'});
+        const data = await resp.json();
+        if (resp.ok) { location.reload(); }
+        else { alert(data.error || '操作失败'); }
+    } catch(e) { alert('网络错误'); }
+}
+</script>
+</body>
+</html>

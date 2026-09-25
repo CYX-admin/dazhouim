@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>邮箱验证结果</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; display: flex; align-items: center; justify-content: center; height: 100vh; }
+.card { max-width: 420px; width: 90%; padding: 40px 30px; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); text-align: center; }
+.card h1 { margin-bottom: 16px; font-size: 22px; }
+.card.success h1 { color: #28a745; }
+.card.fail h1 { color: #dc3545; }
+.card p { color: #666; margin-bottom: 20px; font-size: 14px; }
+.btn { display: inline-block; padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; text-decoration: none; color: #fff; background: #1a73e8; }
+.btn:hover { background: #1557b0; }
+</style>
+</head>
+<body>
+{% if success %}
+<div class="card success">
+<h1>验证成功</h1>
+<p>您的邮箱已验证成功！现在可以正常使用聊天室全部功能。</p>
+<a class="btn" href="/chat/">进入聊天室</a>
+</div>
+{% else %}
+<div class="card fail">
+<h1>验证失败</h1>
+<p>验证链接无效或已过期。请重新登录后，到个人资料中重新发送验证邮件。</p>
+<a class="btn" href="/chat/">返回聊天室</a>
+</div>
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台管理 - 大周IM</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; }
+        .header { background: #1a73e8; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 20px; }
+        .header a { color: white; text-decoration: none; font-size: 14px; }
+        .container { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid #eee; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+        th { background: #fafafa; font-weight: 600; font-size: 13px; color: #666; }
+        tr:hover { background: #f9f9f9; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+        .badge-admin { background: #e3f2fd; color: #1565c0; }
+        .badge-banned { background: #ffebee; color: #c62828; }
+        .badge-muted { background: #fff3e0; color: #ef6c00; }
+        .badge-title { background: #f3e5f5; color: #7b1fa2; }
+        form { display: inline; }
+        input[type="text"] { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; width: 120px; }
+        button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; margin: 2px; }
+        .btn-primary { background: #1a73e8; color: white; }
+        .btn-warning { background: #f9a825; color: white; }
+        .btn-danger { background: #e53935; color: white; }
+        .btn-success { background: #43a047; color: white; }
+        .btn-secondary { background: #757575; color: white; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>大周IM 后台管理</h1>
+        <a href="/chat/">返回聊天室</a>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">用户管理（共 {{ users|length }} 人）</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>自定义ID</th>
+                        <th>头衔</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td>{{ u.username }}</td>
+                        <td>
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                <input type="hidden" name="action" value="set_custom_id">
+                                <input type="text" name="custom_id" value="{{ u.profile.custom_id|default_if_none:'' }}" placeholder="自定义ID">
+                                <button type="submit" class="btn-primary">设置</button>
+                            </form>
+                        </td>
+                        <td>
+                            {% if u.profile.user_title %}
+                            <span class="badge badge-title">@{{ u.profile.user_title }}</span>
+                            {% endif %}
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                <input type="hidden" name="action" value="set_title">
+                                <input type="text" name="title" value="{{ u.profile.user_title|default_if_none:'' }}" placeholder="头衔">
+                                <button type="submit" class="btn-primary">颁发</button>
+                            </form>
+                        </td>
+                        <td>
+                            {% if u.profile.is_admin_panel %}<span class="badge badge-admin">管理员</span>{% endif %}
+                            {% if u.profile.is_banned %}<span class="badge badge-banned">已封禁</span>{% endif %}
+                            {% if u.profile.is_muted %}<span class="badge badge-muted">已禁言</span>{% endif %}
+                            {% if not u.profile.is_admin_panel and not u.profile.is_banned and not u.profile.is_muted %}
+                            <span style="color:#999;">普通用户</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                <input type="hidden" name="action" value="toggle_admin">
+                                <button type="submit" class="{% if u.profile.is_admin_panel %}btn-secondary{% else %}btn-success{% endif %}">
+                                    {% if u.profile.is_admin_panel %}取消管理{% else %}授予管理{% endif %}
+                                </button>
+                            </form>
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                <input type="hidden" name="action" value="toggle_ban">
+                                <button type="submit" class="{% if u.profile.is_banned %}btn-success{% else %}btn-danger{% endif %}">
+                                    {% if u.profile.is_banned %}解封{% else %}封禁{% endif %}
+                                </button>
+                            </form>
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                <input type="hidden" name="action" value="toggle_mute">
+                                <button type="submit" class="{% if u.profile.is_muted %}btn-success{% else %}btn-warning{% endif %}">
+                                    {% if u.profile.is_muted %}解除禁言{% else %}禁言{% endif %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

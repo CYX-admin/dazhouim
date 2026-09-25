@@ -1,0 +1,29 @@
+# 敏感配置与本地文件 —— 切勿提交到公开仓库
+config/local_secrets.py
+
+# 数据库与媒体文件
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# 备份与日志
+*.bak
+*.bak_*
+*.log
+
+# 开发脚手架脚本（内含冗余代码，不进仓库）
+setup*.py
+
+# 编辑器
+.idea/
+.vscode/
+.DS_Store

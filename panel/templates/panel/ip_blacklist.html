@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IP黑名单 - 管理后台</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; }
+.admin-layout { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: #1e293b; color: #fff; padding: 20px 0; }
+.sidebar h2 { font-size: 16px; padding: 0 20px 20px; border-bottom: 1px solid #334155; }
+.sidebar ul { list-style: none; margin-top: 10px; }
+.sidebar li a { display: block; padding: 10px 20px; color: #cbd5e1; text-decoration: none; font-size: 14px; }
+.sidebar li a:hover, .sidebar li a.active { background: #334155; color: #fff; }
+.main { flex: 1; padding: 24px; }
+.main h1 { font-size: 22px; margin-bottom: 20px; }
+.card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+th { background: #f8fafc; font-weight: 600; color: #555; }
+.btn { display: inline-block; padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; text-decoration: none; }
+.btn-danger { background: #dc3545; color: #fff; }
+.btn-warning { background: #ffc107; color: #333; }
+.btn-success { background: #28a745; color: #fff; }
+.btn-primary { background: #1a73e8; color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.badge-danger { background: #f8d7da; color: #721c24; }
+.badge-success { background: #d4edda; color: #155724; }
+.badge-info { background: #d1ecf1; color: #0c5460; }
+.form-inline { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+.form-inline input, .form-inline select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+.top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.top-bar .admin-info { font-size: 14px; color: #666; }
+.pwd-form { max-width: 400px; }
+.pwd-form .form-group { margin-bottom: 16px; }
+.pwd-form label { display: block; margin-bottom: 6px; font-size: 13px; color: #555; }
+.pwd-form input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+.error { color: #dc3545; background: #f8d7da; padding: 10px; border-radius: 6px; margin-bottom: 16px; }
+.success { color: #155724; background: #d4edda; padding: 10px; border-radius: 6px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="admin-layout">
+<div class="sidebar">
+<h2>🔧 管理后台</h2>
+<ul>
+<li><a href="/admin-panel/dashboard/" class="">📊 仪表盘</a></li>
+<li><a href="/admin-panel/users/" class="">👥 用户管理</a></li>
+<li><a href="/admin-panel/ip-blacklist/" class="active">🚫 IP黑名单</a></li>
+<li><a href="/admin-panel/login-logs/" class="">📋 登录日志</a></li>
+{% if admin.role == "super" %}<li><a href="/admin-panel/admins/" class="">👤 管理员管理</a></li>{% endif %}
+<li><a href="/admin-panel/change-password/" class="">🔑 修改密码</a></li>
+<li><a href="/admin-panel/logout/">🚪 退出登录</a></li>
+</ul>
+</div>
+<div class="main">
+<div class="top-bar"><h1>🚫 IP黑名单</h1>
+<div class="admin-info">{{ admin.username }} ({{ admin.get_role_display }})</div></div>
+<div class="card">
+<form method="post" action="/admin-panel/ip-blacklist/add/" class="form-inline">
+{% csrf_token %}
+<input type="text" name="ip_address" placeholder="IP地址" required>
+<input type="text" name="reason" placeholder="封禁原因（可选）">
+<button type="submit" class="btn btn-primary btn-sm">添加封禁</button>
+</form>
+<table>
+<thead><tr><th>ID</th><th>IP地址</th><th>原因</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+<tbody>
+{% for ip in ips %}
+<tr>
+<td>{{ ip.id }}</td>
+<td>{{ ip.ip_address }}</td>
+<td>{{ ip.reason|default:"-" }}</td>
+<td>{% if ip.is_active %}<span class="badge badge-danger">封禁中</span>{% else %}<span class="badge badge-success">已解封</span>{% endif %}</td>
+<td>{{ ip.created_at|date:"Y-m-d H:i" }}</td>
+<td><button class="btn btn-sm {% if ip.is_active %}btn-success{% else %}btn-warning{% endif %}" onclick="toggle({{ ip.id }})">{% if ip.is_active %}解封{% else %}重新封禁{% endif %}</button></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+<script>
+const csrf = '{{ csrf_token }}';
+function toggle(id) {
+  fetch('/admin-panel/ip-blacklist/' + id + '/toggle/', {method:'POST', headers:{'X-CSRFToken':csrf}, credentials:'same-origin'})
+  .then(r=>r.json()).then(()=>location.reload());
+}
+</script>
+</div></div></body></html>

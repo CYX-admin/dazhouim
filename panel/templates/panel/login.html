@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理员登录</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, sans-serif; background: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.login-box { background: #fff; padding: 36px; border-radius: 12px; width: 360px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+.login-box h1 { text-align: center; color: #1e293b; margin-bottom: 24px; font-size: 20px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: #555; font-weight: 500; }
+.form-group input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+.form-group input:focus { outline: none; border-color: #1a73e8; }
+.btn { width: 100%; padding: 11px; background: #1a73e8; color: #fff; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
+.btn:hover { background: #1557b0; }
+.error { color: #dc3545; background: #f8d7da; padding: 10px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; }
+.back-link { text-align: center; margin-top: 16px; font-size: 13px; }
+.back-link a { color: #1a73e8; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="login-box">
+<h1>🔒 管理员登录</h1>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+<form method="post">
+{% csrf_token %}
+<div class="form-group"><label>管理员用户名</label><input type="text" name="username" required></div>
+<div class="form-group"><label>密码</label><input type="password" name="password" required></div>
+<button type="submit" class="btn">登录</button>
+</form>
+<div class="back-link"><a href="/">返回聊天室</a></div>
+</div>
+</body>
+</html>

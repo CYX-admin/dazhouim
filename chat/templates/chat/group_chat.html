@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ group.name }} - 大周IM</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#f0f2f5; height:100vh; display:flex; flex-direction:column; }
+.header { background:#1a73e8; color:#fff; padding:10px 16px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+.header .group-info { display:flex; align-items:center; gap:10px; }
+.header h1 { font-size:16px; }
+.header a { color:#fff; margin-left:10px; text-decoration:underline; font-size:13px; }
+.role-tag { font-size:10px; padding:1px 5px; border-radius:3px; margin-left:6px; }
+.role-owner { background:#ff6b35; color:#fff; }
+.role-admin { background:#f5a623; color:#fff; }
+.main-container { flex:1; display:flex; gap:12px; padding:12px; overflow:hidden; }
+.chat-area { flex:3; display:flex; flex-direction:column; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+#messages { flex:1; overflow-y:auto; padding:16px; }
+.date-divider { text-align:center; margin:12px 0; }
+.date-divider span { background:#e0e0e0; color:#666; font-size:12px; padding:3px 12px; border-radius:10px; }
+.msg-row { display:flex; margin-bottom:14px; align-items:flex-start; }
+.msg-row.own { flex-direction:row-reverse; }
+.avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; font-weight:600; flex-shrink:0; }
+.msg-body { max-width:70%; margin:0 8px; }
+.msg-row.own .msg-body { text-align:right; }
+.meta { font-size:11px; color:#999; margin-bottom:3px; display:flex; align-items:center; gap:6px; }
+.msg-row.own .meta { justify-content:flex-end; }
+.meta .username { color:#666; font-weight:500; }
+.bubble { background:#f6f6f6; padding:8px 12px; border-radius:8px; font-size:14px; color:#333; word-break:break-word; display:inline-block; text-align:left; }
+.msg-row.own .bubble { background:#1a73e8; color:#fff; }
+.bubble-deleted-txt { background:#bbb; font-style:italic; font-size:13px; }
+.recall-btn { background:none; border:none; color:#dc3545; font-size:11px; cursor:pointer; padding:0; }
+.recall-btn:hover { text-decoration:underline; }
+.at-tag { color:#1a73e8; font-weight:600; }
+.msg-row.own .at-tag { color:#ffe082; }
+.input-area { background:#fff; padding:10px 16px; border-top:1px solid #eee; display:flex; gap:8px; flex-shrink:0; }
+.input-area textarea { flex:1; padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; resize:none; height:60px; font-family:inherit; }
+.input-area textarea:focus { outline:none; border-color:#1a73e8; }
+.input-area button { padding:9px 18px; background:#1a73e8; color:#fff; border:none; border-radius:6px; font-size:14px; cursor:pointer; }
+.input-area button:hover { background:#1557b0; }
+.input-area button:disabled { background:#aaa; cursor:not-allowed; }
+.sidebar { flex:1; min-width:240px; max-width:300px; display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
+.sidebar-card { background:#fff; border-radius:8px; padding:12px; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+.sidebar-card h4 { font-size:13px; color:#333; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #eee; }
+.announcement-text { font-size:13px; color:#555; line-height:1.6; min-height:60px; white-space:pre-wrap; word-break:break-word; }
+.announcement-edit textarea { width:100%; height:80px; padding:6px; border:1px solid #ddd; border-radius:4px; font-size:13px; resize:vertical; font-family:inherit; }
+.announcement-edit button { margin-top:6px; padding:5px 12px; background:#1a73e8; color:#fff; border:none; border-radius:4px; font-size:12px; cursor:pointer; }
+.member-list { max-height:300px; overflow-y:auto; }
+.member-item { display:flex; align-items:center; padding:6px 4px; border-radius:4px; cursor:pointer; transition:background 0.2s; }
+.member-item:hover { background:#f0f7ff; }
+.member-item .avatar { width:28px; height:28px; font-size:12px; margin-right:8px; }
+.member-item .name { font-size:13px; color:#333; flex:1; }
+.member-item .role { font-size:10px; padding:1px 4px; border-radius:3px; }
+.at-all-btn { width:100%; padding:6px; background:#f0f7ff; color:#1a73e8; border:1px solid #1a73e8; border-radius:4px; font-size:12px; cursor:pointer; margin-bottom:8px; }
+.at-all-btn:hover { background:#1a73e8; color:#fff; }
+.muted-tip { background:#fff3cd; color:#856404; padding:6px 16px; font-size:12px; text-align:center; flex-shrink:0; }
+.user-title{color:#7b1fa2;font-size:12px;margin-left:4px;font-weight:normal;}
+.action-btn { font-size:11px; color:#576b95; cursor:pointer; background:none; border:none; padding:0; margin-left:8px; }
+.action-btn:hover { text-decoration:underline; }
+.mute-side-btn { font-size:10px; padding:2px 6px; border:1px solid #ddd; background:#fff; border-radius:3px; cursor:pointer; color:#d32f2f; flex-shrink:0; }
+.mute-side-btn:hover { background:#ffebee; }
+.search-bar { display:none; padding:8px 12px; background:#f0f2f5; border-bottom:1px solid #eee; gap:8px; align-items:center; flex-shrink:0; }
+.search-bar.show { display:flex; }
+.search-bar input { flex:1; padding:6px 10px; border:1px solid #ddd; border-radius:4px; font-size:13px; }
+.search-bar button { padding:6px 12px; background:#1a73e8; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:12px; }
+.search-results { display:none; max-height:200px; overflow-y:auto; background:#fff; border-bottom:1px solid #eee; flex-shrink:0; }
+.search-results.show { display:block; }
+.search-result-item { padding:8px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:13px; }
+.search-result-item:hover { background:#e8f0fe; }
+.search-result-item .sr-user { font-weight:600; color:#333; }
+.search-result-item .sr-content { color:#666; margin-top:2px; }
+.header button { background:none; border:none; color:#fff; font-size:13px; cursor:pointer; margin-left:10px; padding:0; text-decoration:underline; }
+.header button:hover { text-decoration:underline; }
+.read-count{font-size:11px;color:#999;margin-top:2px;text-align:right;}
+.date-divider{text-align:center;margin:16px 0;}
+.date-divider span{background:#e0e0e0;color:#888;font-size:11px;padding:2px 10px;border-radius:10px;}
+.forward-from{font-size:11px;color:#999;margin-bottom:4px;text-align:left;}
+.mention-badge{display:none;align-items:center;background:#f44;color:#fff;font-size:11px;padding:2px 9px;border-radius:10px;cursor:pointer;margin-left:6px;}
+.mention-badge.show{display:inline-flex;}
+.forward-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center;z-index:9999;}
+.forward-modal.show{display:flex;}
+.forward-card{background:#fff;border-radius:12px;width:320px;max-height:420px;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.15);}
+.forward-card-header{padding:14px 16px;border-bottom:1px solid #eee;font-size:15px;font-weight:600;color:#333;}
+.forward-list{flex:1;overflow-y:auto;padding:6px 0;}
+.forward-section{font-size:11px;color:#999;padding:8px 16px 2px;}
+.forward-item{padding:9px 16px;cursor:pointer;font-size:14px;color:#333;display:flex;align-items:center;gap:10px;}
+.forward-item:hover{background:#f0f0f0;}
+.forward-item .fi-ava{width:30px;height:30px;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;}
+.forward-card-footer{padding:10px 16px;border-top:1px solid #eee;text-align:right;}
+.forward-card-footer button{padding:6px 18px;background:#f5f5f5;border:1px solid #ddd;border-radius:6px;cursor:pointer;font-size:13px;}
+.forward-card-footer button:hover{background:#ececec;}
+</style>
+</head>
+<body>
+<div class="header">
+    <div class="group-info">
+        <h1>{{ group.name }}</h1>
+        <span class="member-count">{{ members|length }}人</span>
+        <span class="mention-badge" id="mentionBadge" onclick="jumpToUnreadMention()"></span>
+        {% if is_owner %}<span class="role-tag role-owner">群主</span>{% endif %}
+        {% if is_admin %}<span class="role-tag role-admin">管理员</span>{% endif %}
+    </div>
+    <div>
+        <a href="/group/{{ group.id }}/profile/">群资料</a>
+        <a href="{% url 'group_members' group.id %}">成员管理</a>
+        <a href="{% url 'group_list' %}">群列表</a>
+        <button onclick="toggleSearch()" id="searchBtn">搜索</button>
+        <a href="/chat/">返回主页</a>
+        <a href="{% url 'logout' %}">退出</a>
+    </div>
+</div>
+
+{% if is_muted or is_banned or group_muted %}
+<div class="muted-tip">{% if is_banned %}你已被禁言{% elif group_muted %}你已被群主禁言{% else %}你已被暂时禁言{% endif %}</div>
+{% endif %}
+
+<div class="main-container">
+    <div class="chat-area">
+        <div class="search-bar" id="searchBar">
+            <input type="text" id="searchInput" placeholder="搜索群消息..." oninput="doSearch()">
+            <button onclick="closeSearch()">关闭</button>
+        </div>
+        <div class="search-results" id="searchResults"></div>
+        <div id="messages">
+            {% for m in messages %}
+            <div class="msg-row {% if m.sender == request.user %}own{% endif %}" data-id="{{ m.id }}">
+                <div class="avatar">{% if m.sender.profile.avatar %}<img src="{{ m.sender.profile.avatar.url }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">{% else %}<div style="width:100%;height:100%;border-radius:50%;background:{{ m.sender.id|stringformat:'x' }};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;">{{ m.sender.username|first|upper }}</div>{% endif %}</div>
+                <div class="msg-body">
+                    <div class="meta">
+                        <span class="username">{{ m.sender.username }}{% if m.sender.profile.user_title %}<span class="user-title">@{{ m.sender.profile.user_title }}</span>{% endif %}</span>
+                        <span class="time">{{ m.timestamp|date:"Y-m-d H:i" }}</span>
+                        {% if m.sender == request.user %}
+                        {% if not m.is_deleted %}
+                        <button class="recall-btn" onclick="recallMsg({{ m.id }})">撤回</button>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    {% if m.is_deleted %}
+                    <div class="bubble bubble-deleted-txt">消息已撤回</div>
+                    {% else %}
+                    {% if m.forwarded_from %}
+                    <div class="forward-from">{{ m.forwarded_from }}</div>
+                    {% endif %}
+                    <div class="bubble">{{ m.content|linebreaksbr }}</div>
+                    {% if m.attachment %}
+                    <div class="attachment" data-url="{{ m.attachment.url }}" data-name="{{ m.attachment_name|default:'' }}" data-type="{{ m.attachment_type }}"></div>
+                    {% endif %}
+                    <div style="margin-top:4px;"><button class="action-btn" onclick="copyMsg({{ m.id }}, this)">复制</button><button class="action-btn" onclick="favoriteMsg({{ m.id }}, 'group')">收藏</button><button class="action-btn" onclick="forwardMsg({{ m.id }}, 'group')">转发</button></div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="input-area">
+        <div class="attach-bar" id="attachBar" style="display:none;"><span id="attachText"></span><span class="cancel-attach" onclick="cancelAttach()">取消附件 ×</span></div>
+            <textarea id="msgInput" placeholder="输入消息..." {% if is_muted or is_banned or group_muted %}disabled{% endif %}></textarea>
+    <label class="attach-btn" title="发送附件">📎<input type="file" id="attachInput" style="display:none;" onchange="selectAttach(this)"></label>
+            <button id="sendBtn" onclick="sendMessage()" {% if is_muted or is_banned or group_muted %}disabled{% endif %}>发送</button>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-card">
+            <h4> 群公告</h4>
+            {% if is_owner or is_admin %}
+            <div class="announcement-edit">
+                <textarea id="announceEdit" placeholder="编辑群公告...">{{ group.announcement }}</textarea>
+                <button onclick="saveAnnouncement()">保存公告</button>
+            </div>
+            {% else %}
+            <div class="announcement-text">{% if group.announcement %}{{ group.announcement }}{% else %}暂无公告{% endif %}</div>
+            {% endif %}
+        </div>
+
+        <div class="sidebar-card">
+            <h4> 群成员 ({{ members|length }})</h4>
+            <button class="at-all-btn" onclick="atAll()">@全体成员</button>
+            <div class="member-list">
+                {% for member in members %}
+                <div class="member-item" onclick="atUser('{{ member.user.username }}')">
+                    <div class="avatar" style="background:#{{ member.user.id|stringformat:'x' }};">{{ member.user.username|first|upper }}</div>
+                    <span class="name">{{ member.user.username }}</span>
+                    {% if member.role == 'owner' %}<span class="role role-owner">群主</span>
+                    {% elif member.role == 'admin' %}<span class="role role-admin">管理员</span>{% endif %}
+                    {% if is_owner or is_admin %}
+                    {% if member.role != 'owner' %}
+                    {% if is_owner or member.role == 'member' %}
+                    <button class="mute-side-btn" onclick="event.stopPropagation();muteMember({{ member.user.id }}, '{{ member.user.username|escapejs }}')">禁言</button>
+                    {% endif %}
+                    {% endif %}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/chat/js/attachment.js?v=20260922a"></script>
+<script>
+const csrfToken = '{{ csrf_token }}';
+const groupId = {{ group.id }};
+let lastMsgId = {{ last_msg_id }};
+const msgInput = document.getElementById('msgInput');
+const sendBtn = document.getElementById('sendBtn');
+const messagesDiv = document.getElementById('messages');
+let attachFile = null;
+const attachBar = document.getElementById('attachBar');
+const attachText = document.getElementById('attachText');
+
+function selectAttach(input) {
+  if(input.files && input.files[0]) {
+    attachFile = input.files[0];
+    attachBar.style.display = 'flex';
+    attachText.textContent = '已选择：' + attachFile.name;
+  }
+}
+
+function cancelAttach() {
+  attachFile = null;
+  const ai = document.getElementById('attachInput');
+  if(ai) ai.value = '';
+  attachBar.style.display = 'none';
+}
+
+function avatarColor(uid) {
+    const colors = ['#1a73e8','#e53935','#43a047','#f57c00','#8e24aa','#00897b','#546e7a','#d81b60'];
+    return colors[uid % colors.length];
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatTime(timestamp) {
+    const d = new Date(timestamp * 1000);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const year = d.getFullYear();
+    const mon = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    const h = String(d.getHours()).padStart(2,'0');
+    const m = String(d.getMinutes()).padStart(2,'0');
+    if(isToday) return `${h}:${m}`;
+    return `${year}-${mon}-${day} ${h}:${m}`;
+}
+
+function renderAtTags(text) {
+    return escapeHtml(text).replace(/@([^\s，。！?、]+)/g, '<span class="at-tag">@$1</span>');
+}
+
+function scrollToBottom() { messagesDiv.scrollTop = messagesDiv.scrollHeight; }
+// 处理初始消息的@高亮
+document.querySelectorAll('#messages .bubble').forEach(function(el) {
+    if (!el.classList.contains('bubble-deleted-txt')) {
+        el.innerHTML = el.innerHTML.replace(/@([^\s，。！?、]+)/g, '<span class="at-tag">@$1</span>');
+    }
+});
+scrollToBottom();
+
+
+msgInput.addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+
+function atUser(username) {
+    msgInput.value += '@' + username + ' ';
+    msgInput.focus();
+}
+
+function atAll() {
+    msgInput.value += '@全体成员 ';
+    msgInput.focus();
+}
+
+async function saveAnnouncement() {
+    const text = document.getElementById('announceEdit').value;
+    const fd = new FormData();
+    fd.append('announcement', text);
+    fd.append('csrfmiddlewaretoken', csrfToken);
+    try {
+        const resp = await fetch('/api/group/' + groupId + '/announcement/save/', {method:'POST', body:fd, credentials:'same-origin'});
+        const data = await resp.json();
+        if(data.status === 'ok') alert('公告保存成功');
+        else alert(data.error || '保存失败');
+    } catch(e) { alert('网络错误'); }
+}
+
+async function sendMessage() {
+    const content = msgInput.value.trim();
+    if(!content && !attachFile) return;
+    sendBtn.disabled = true;
+    try {
+        const fd = new FormData();
+        fd.append('content', content);
+        if(attachFile) fd.append('attachment', attachFile);
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        const resp = await fetch('/api/group/' + groupId + '/send/', {method:'POST', body:fd, credentials:'same-origin'});
+        if(resp.ok) {
+            msgInput.value = '';
+            if(typeof cancelAttach === 'function') cancelAttach();
+            fetchMessages();
+        } else {
+            const err = await resp.json();
+            alert(err.error || '发送失败');
+        }
+    } catch(e) { alert('网络错误'); }
+    finally { sendBtn.disabled = false; }
+}
+
+async function fetchMessages() {
+    try {
+        const resp = await fetch('/api/group/' + groupId + '/messages/?last_id=' + lastMsgId);
+        const data = await resp.json();
+        if(data.messages && data.messages.length > 0) {
+            data.messages.forEach(m => appendMessage(m));
+            lastMsgId = data.messages[data.messages.length - 1].id;
+            // 处理初始消息的@高亮
+document.querySelectorAll('#messages .bubble').forEach(function(el) {
+    if (!el.classList.contains('bubble-deleted-txt')) {
+        el.innerHTML = el.innerHTML.replace(/@([^\s，。！?、]+)/g, '<span class="at-tag">@$1</span>');
+    }
+});
+scrollToBottom();
+        }
+    } catch(e) {}
+}
+
+function formatDateDivider(ts) {
+    const d = new Date(ts * 1000);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const msgDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((today - msgDate) / (1000 * 60 * 60 * 24));
+    if(diffDays === 0) return '今天';
+    if(diffDays === 1) return '昨天';
+    return (d.getFullYear() === now.getFullYear() ? (d.getMonth()+1)+'月'+d.getDate()+'日' : d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日');
+}
+let lastDividerDate = null;
+
+function appendMessage(m) {
+    const isOwn = m.user_id === {{ request.user.id }};
+    const canRecall = isOwn;
+    let recallBtn = '';
+    if(canRecall && !m.is_deleted) {
+        recallBtn = '<button class="recall-btn" onclick="recallMsg(' + m.id + ')">撤回</button>';
+    }
+    // 日期分隔
+    if(m.created_at) {
+        const d = new Date(m.created_at * 1000).toDateString();
+        if(lastDividerDate !== d) {
+            messagesDiv.insertAdjacentHTML('beforeend', '<div class="date-divider"><span>' + formatDateDivider(m.created_at) + '</span></div>');
+            lastDividerDate = d;
+        }
+    }
+    let bubbleHtml;
+    if(m.is_deleted) {
+        bubbleHtml = '<div class="bubble bubble-deleted-txt">消息已撤回</div>';
+    } else {
+        let fromLabel = m.forwarded_from ? '<div class="forward-from">' + escapeHtml(m.forwarded_from) + '</div>' : '';
+        bubbleHtml = fromLabel + '<div class="bubble">' + renderAtTags(m.content).replace(/\n/g, '<br>') + '</div>';
+        if(m.attachment) bubbleHtml += buildAttachmentHtml(m.attachment);
+        bubbleHtml += '<div style="margin-top:4px;"><button class="action-btn" onclick="copyMsg(' + m.id + ', this)">复制</button><button class="action-btn" onclick="favoriteMsg(' + m.id + ', \'group\')">收藏</button><button class="action-btn" onclick="forwardMsg(' + m.id + ', \'group\')">转发</button></div>';
+        if(isOwn && m.read_count !== undefined) {
+            bubbleHtml += '<div class="read-count">' + m.read_count + '/' + (m.total_members || '?') + ' 已读</div>';
+        }
+    }
+    const html = '<div class="msg-row ' + (isOwn ? 'own' : '') + '" data-id="' + m.id + '">' +
+        '<div class="avatar">' + (m.avatar_url ? '<img src="' + m.avatar_url + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">' : '<div style="width:100%;height:100%;border-radius:50%;background:' + avatarColor(m.user_id) + ';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;">' + escapeHtml(m.username.charAt(0).toUpperCase()) + '</div>') + '</div>' +
+        '<div class="msg-body"><div class="meta">' +
+        '<span class="username">' + escapeHtml(m.username) + (m.user_title ? '<span class="user-title">@' + escapeHtml(m.user_title) + '</span>' : '') + '</span>' +
+        '<span class="time">' + formatTime(m.created_at) + '</span>' + recallBtn +
+        '</div>' + bubbleHtml + '</div></div>';
+    messagesDiv.insertAdjacentHTML('beforeend', html);
+}
+
+async function recallMsg(id) {
+    if(!confirm('确定撤回这条消息吗？')) return;
+    try {
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        const resp = await fetch('/api/group/' + groupId + '/recall/' + id + '/', {method:'POST', body:fd, credentials:'same-origin'});
+        if(resp.ok) { fetchMessages(); }
+        else { const err = await resp.json(); alert(err.error || '撤回失败'); }
+    } catch(e) { alert('网络错误'); }
+}
+function toggleSearch() {
+    var bar = document.getElementById('searchBar');
+    var results = document.getElementById('searchResults');
+    if(bar.classList.contains('show')) {
+        bar.classList.remove('show');
+        results.classList.remove('show');
+    } else {
+        bar.classList.add('show');
+        document.getElementById('searchInput').focus();
+    }
+}
+function closeSearch() {
+    document.getElementById('searchBar').classList.remove('show');
+    document.getElementById('searchResults').classList.remove('show');
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchResults').innerHTML = '';
+}
+var searchDebounce = null;
+async function doSearch() {
+    clearTimeout(searchDebounce);
+    var q = document.getElementById('searchInput').value.trim();
+    var resultsEl = document.getElementById('searchResults');
+    if(!q) { resultsEl.classList.remove('show'); resultsEl.innerHTML = ''; return; }
+    searchDebounce = setTimeout(async function() {
+        try {
+            const resp = await fetch('/api/group/' + groupId + '/search/?q=' + encodeURIComponent(q));
+            const data = await resp.json();
+            if(data.messages && data.messages.length > 0) {
+                resultsEl.innerHTML = data.messages.map(function(m) {
+                    return '<div class="search-result-item" onclick="locateMsg(' + m.id + ')"><span class="sr-user">' + escapeHtml(m.username) + '</span><div class="sr-content">' + escapeHtml(m.content) + '</div></div>';
+                }).join('');
+                resultsEl.classList.add('show');
+            } else {
+                resultsEl.innerHTML = '<div class="search-result-item" style="color:#999;">未找到匹配消息</div>';
+                resultsEl.classList.add('show');
+            }
+        } catch(e) {}
+    }, 300);
+}
+function locateMsg(id) {
+    var row = document.querySelector('.msg-row[data-id="' + id + '"]');
+    if(row) {
+        row.scrollIntoView({behavior:'smooth', block:'center'});
+        row.style.background = '#fff3cd';
+        setTimeout(function(){ row.style.background = ''; }, 2000);
+    } else {
+        alert('消息可能尚未加载，正在刷新...');
+        fetchMessages();
+    }
+}
+function copyMsg(id, btn) {
+    var row = btn.closest('.msg-row');
+    var bubble = row ? row.querySelector('.bubble') : null;
+    if(!bubble) return;
+    var text = bubble.textContent;
+    if(navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+            btn.textContent = '已复制';
+            setTimeout(function(){ btn.textContent = '复制'; }, 1500);
+        });
+    } else {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = '已复制';
+        setTimeout(function(){ btn.textContent = '复制'; }, 1500);
+    }
+}
+async function favoriteMsg(messageId, messageType) {
+    try {
+        var fd = new FormData();
+        fd.append('message_type', messageType);
+        fd.append('message_id', messageId);
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        var resp = await fetch('/api/favorite/add/', {method:'POST', body:fd, credentials:'same-origin'});
+        var data = await resp.json();
+        if(data.status === 'ok') { alert('已收藏'); }
+        else { alert(data.error || '收藏失败'); }
+    } catch(e) { alert('网络错误'); }
+}
+async function muteMember(userId, username) {
+    if(!confirm('确定禁言 ' + username + ' 吗？（永久禁言）')) return;
+    try {
+        var fd = new FormData();
+        fd.append('user_id', userId);
+        fd.append('duration', 0);
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        var resp = await fetch('/api/group/' + groupId + '/mute-member/', {method:'POST', body:fd, credentials:'same-origin'});
+        var data = await resp.json();
+        if(resp.ok) { alert('已禁言 ' + username); }
+        else { alert(data.error || '操作失败'); }
+    } catch(e) { alert('网络错误'); }
+}
+setInterval(fetchMessages, 3000);
+
+// ===== 消息转发 =====
+let forwardMsgId=null, forwardSourceType=null;
+async function forwardMsg(msgId, sourceType){
+    forwardMsgId=msgId;
+    forwardSourceType=sourceType;
+    document.getElementById('forwardModal').classList.add('show');
+    await loadForwardTargets();
+}
+async function loadForwardTargets(){
+    const listEl=document.getElementById('forwardList');
+    listEl.innerHTML='<div class="forward-section">加载中...</div>';
+    let html='';
+    try{
+        const resp=await fetch('/api/private/list/');
+        const data=await resp.json();
+        if(data.chats && data.chats.length>0){
+            html+='<div class="forward-section">好友</div>';
+            data.chats.forEach(function(c){
+                html+='<div class="forward-item" onclick="doForward('+c.id+', \'private\')"><div class="fi-ava" style="background:hsl('+(c.other_id%10*10)+',55%,55%)">'+escapeHtml(c.other_username.charAt(0).toUpperCase())+'</div><span>'+escapeHtml(c.other_username)+'</span></div>';
+            });
+        }
+    }catch(e){}
+    try{
+        const gresp=await fetch('/api/groups/');
+        const gdata=await gresp.json();
+        if(gdata.groups && gdata.groups.length>0){
+            html+='<div class="forward-section">群聊</div>';
+            gdata.groups.forEach(function(g){
+                html+='<div class="forward-item" onclick="doForward('+g.id+', \'group\')"><div class="fi-ava" style="background:#5b8def;">'+escapeHtml(g.name.charAt(0).toUpperCase())+'</div><span>'+escapeHtml(g.name)+'</span></div>';
+            });
+        }
+    }catch(e){}
+    if(!html) html='<div class="forward-section">暂无可转发的会话</div>';
+    listEl.innerHTML=html;
+}
+async function doForward(targetId, targetType){
+    if(forwardMsgId==null) return;
+    try{
+        const fd=new FormData();
+        fd.append('source_type', forwardSourceType);
+        fd.append('message_id', forwardMsgId);
+        fd.append('target_type', targetType);
+        fd.append('target_id', targetId);
+        fd.append('csrfmiddlewaretoken', csrfToken);
+        const resp=await fetch('/api/forward/', {method:'POST', body:fd, credentials:'same-origin'});
+        const data=await resp.json();
+        if(data.status==='ok'){
+            closeForwardModal();
+            alert('转发成功');
+        }else{
+            alert(data.error||'转发失败');
+        }
+    }catch(e){alert('网络错误');}
+}
+function closeForwardModal(){
+    document.getElementById('forwardModal').classList.remove('show');
+    forwardMsgId=null;
+    forwardSourceType=null;
+}
+
+// ===== @提及未读提醒 =====
+let unreadMentions=[];
+async function checkUnreadMentions(){
+    try{
+        const resp=await fetch('/api/group/'+groupId+'/unread-mentions/');
+        const data=await resp.json();
+        const badge=document.getElementById('mentionBadge');
+        if(data.count>0 && data.messages && data.messages.length>0){
+            unreadMentions=data.messages;
+            badge.textContent='有新@消息('+data.count+')';
+            badge.classList.add('show');
+        }else{
+            badge.classList.remove('show');
+            unreadMentions=[];
+        }
+    }catch(e){}
+}
+function jumpToUnreadMention(){
+    if(unreadMentions.length===0) return;
+    const id=unreadMentions[0].id;
+    const row=document.querySelector('.msg-row[data-id="'+id+'"]');
+    if(row){
+        row.scrollIntoView({behavior:'smooth',block:'center'});
+        row.style.background='#fff3cd';
+        setTimeout(function(){row.style.background='';},2000);
+    }else{
+        alert('该消息可能尚未加载');
+    }
+}
+checkUnreadMentions();
+setInterval(checkUnreadMentions, 10000);
+</script>
+
+<div class="forward-modal" id="forwardModal" onclick="if(event.target===this)closeForwardModal()">
+    <div class="forward-card">
+        <div class="forward-card-header">转发消息</div>
+        <div class="forward-list" id="forwardList"><div class="forward-section">加载中...</div></div>
+        <div class="forward-card-footer">
+            <button onclick="closeForwardModal()">取消</button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

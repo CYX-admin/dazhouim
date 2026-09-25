@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ group.name }} - 群资料</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f0f2f5;min-height:100vh;}
+.header{background:#1a73e8;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;}
+.header h1{font-size:17px;font-weight:600;}
+.header a{color:#fff;font-size:13px;text-decoration:underline;margin-left:12px;}
+.container{max-width:600px;margin:20px auto;padding:0 16px;}
+.card{background:#fff;border-radius:8px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+.card h3{font-size:14px;color:#333;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #eee;}
+.info-row{display:flex;margin-bottom:10px;font-size:14px;}
+.info-label{color:#888;min-width:70px;}
+.info-value{color:#333;flex:1;}
+.member-list{max-height:300px;overflow-y:auto;}
+.member-item{display:flex;align-items:center;padding:8px 4px;border-bottom:1px solid #f5f5f5;}
+.member-item:last-child{border-bottom:none;}
+.member-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;margin-right:10px;flex-shrink:0;}
+.member-name{font-size:14px;color:#333;flex:1;}
+.member-role{font-size:11px;padding:2px 6px;border-radius:3px;color:#fff;}
+.role-owner{background:#ff6b35;}
+.role-admin{background:#f5a623;}
+.role-member{background:#9e9e9e;}
+.edit-group textarea,.edit-group input{width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;font-family:inherit;margin-bottom:8px;}
+.edit-group textarea{height:60px;resize:vertical;}
+.edit-group button{padding:8px 20px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;}
+.edit-group button:hover{background:#1557b0;}
+.muted-tag{color:#dc3545;font-size:11px;margin-left:6px;}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>群资料</h1>
+<div>
+<a href="/group/{{ group.id }}/">返回聊天</a>
+<a href="/groups/">群列表</a>
+<a href="/logout/">退出</a>
+</div>
+</div>
+<div class="container">
+<div class="card">
+<h3>群信息</h3>
+{% if is_owner %}
+<div class="edit-group">
+<div class="info-row"><span class="info-label">群名称</span></div>
+<input type="text" id="groupName" value="{{ group.name }}" maxlength="50">
+<div class="info-row"><span class="info-label">群简介</span></div>
+<textarea id="groupDesc" maxlength="200">{{ group.description }}</textarea>
+<div class="info-row"><span class="info-label">入群方式</span></div>
+<select id="joinMode">
+<option value="open" {% if group.join_mode == 'open' %}selected{% endif %}>自由加入</option>
+<option value="approval" {% if group.join_mode == 'approval' %}selected{% endif %}>需审核（PIN码或申请审批）</option>
+</select>
+<div class="info-row"><span class="info-label">入群PIN码（可选）</span></div>
+<input type="text" id="joinPin" value="{{ group.join_pin|default:'' }}" maxlength="16" placeholder="4-16位字母或数字，设置后输入PIN可直接入群">
+<div style="font-size:12px;color:#888;margin-bottom:8px;">不设置PIN码时，所有入群者都必须提交申请并由你审批。</div>
+<button onclick="updateGroupInfo()">保存修改</button>
+</div>
+{% else %}
+<div class="info-row"><span class="info-label">群名称</span><span class="info-value">{{ group.name }}</span></div>
+<div class="info-row"><span class="info-label">群简介</span><span class="info-value">{{ group.description|default:"暂无简介" }}</span></div>
+<div class="info-row"><span class="info-label">群主</span><span class="info-value">{{ group.owner.username }}</span></div>
+<div class="info-row"><span class="info-label">成员数</span><span class="info-value">{{ member_count }} / {{ group.max_members }}</span></div>
+<div class="info-row"><span class="info-label">入群方式</span><span class="info-value">{% if group.join_mode == 'approval' %}需审核（输入群主PIN码或申请审批）{% else %}自由加入{% endif %}</span></div>
+<div class="info-row"><span class="info-label">创建时间</span><span class="info-value">{{ group.created_at|date:"Y-m-d" }}</span></div>
+{% endif %}
+</div>
+
+{% if is_owner %}
+<div class="card" id="joinRequestsCard" {% if group.join_mode != 'approval' %}style="display:none;"{% endif %}>
+<h3>入群申请（<span id="reqCount">0</span>）</h3>
+<div id="joinRequests"></div>
+<div id="reqEmpty" style="font-size:13px;color:#999;padding:8px 0;">暂无待处理的入群申请</div>
+</div>
+{% endif %}
+
+<div class="card">
+<h3>群公告</h3>
+<div style="font-size:14px;color:#555;line-height:1.6;white-space:pre-wrap;">{% if group.announcement %}{{ group.announcement }}{% else %}暂无公告{% endif %}</div>
+</div>
+
+<div class="card">
+<h3>成员列表 ({{ member_count }})</h3>
+<div class="member-list">
+{% for member in members %}
+<div class="member-item">
+<div class="member-avatar" style="background:hsl({{ member.user.id|stringformat:'d'|last }}0,60%,55%)">{{ member.user.username|first|upper }}</div>
+<span class="member-name">{{ member.user.username }}
+{% if member.user.profile.user_title %}<span style="color:#7b1fa2;font-size:12px;">@{{ member.user.profile.user_title }}</span>{% endif %}
+{% if member.is_muted %}<span class="muted-tag">已禁言</span>{% endif %}
+</span>
+<span class="member-role {% if member.role == 'owner' %}role-owner{% elif member.role == 'admin' %}role-admin{% else %}role-member{% endif %}">
+{% if member.role == 'owner' %}群主{% elif member.role == 'admin' %}管理员{% else %}成员{% endif %}
+</span>
+</div>
+{% endfor %}
+</div>
+</div>
+
+{% if is_owner %}
+<div class="card danger-zone">
+<h3>危险操作</h3>
+<div style="font-size:13px;color:#777;margin-bottom:10px;">转让群主请前往「成员列表」；解散群后所有成员将失去该群及全部消息。</div>
+<button class="btn-danger" onclick="disbandGroup()" style="padding:8px 20px;background:#d32f2f;color:#fff;border:none;border-radius:4px;cursor:pointer;">解散群聊</button>
+</div>
+{% endif %}
+</div>
+<script>
+const csrfToken='{{ csrf_token }}';
+const groupId={{ group.id }};
+const isOwner = {{ is_owner|yesno:'true,false' }};
+async function updateGroupInfo(){
+    const name=document.getElementById('groupName').value.trim();
+    const desc=document.getElementById('groupDesc').value.trim();
+    if(!name){alert('群名不能为空');return;}
+    const joinMode=document.getElementById('joinMode') ? document.getElementById('joinMode').value : 'open';
+    const joinPin=document.getElementById('joinPin') ? document.getElementById('joinPin').value.trim() : '';
+    const fd=new FormData();
+    fd.append('name',name);
+    fd.append('description',desc);
+    fd.append('join_mode',joinMode);
+    fd.append('join_pin',joinPin);
+    fd.append('csrfmiddlewaretoken',csrfToken);
+    try{
+        const resp=await fetch('/api/group/'+groupId+'/update-info/',{method:'POST',body:fd,credentials:'same-origin'});
+        const data=await resp.json();
+        if(data.status==='ok'){alert('修改成功');location.reload();}
+        else{alert(data.error||'修改失败');}
+    }catch(e){alert('网络错误');}
+}
+// 入群申请
+async function loadJoinRequests(){
+    if(!isOwner) return;
+    try{
+        const resp=await fetch('/api/group/'+groupId+'/join-requests/',{credentials:'same-origin'});
+        const data=await resp.json();
+        const card=document.getElementById('joinRequestsCard');
+        if(card && card.style.display==='none' && data.requests && data.requests.length===0) return;
+        document.getElementById('reqCount').textContent=data.count||0;
+        const listEl=document.getElementById('joinRequests');
+        const emptyEl=document.getElementById('reqEmpty');
+        if(data.requests && data.requests.length>0){
+            listEl.innerHTML=data.requests.map(function(r){
+                return '<div class="member-item" style="padding:8px 0;">' +
+                    '<div style="flex:1;">' +
+                    '<div class="member-name">'+r.username+'</div>' +
+                    '<div style="font-size:12px;color:#888;">'+(r.message?escapeHtml(r.message):'<span style="color:#bbb;">（无留言）</span>')+' · '+r.created_at+'</div>' +
+                    '</div>' +
+                    '<div style="display:flex;gap:6px;">' +
+                    '<button style="padding:5px 14px;background:#07c160;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;" onclick="handleJoinRequest('+r.id+',\'approve\',\''+r.username+'\')">同意</button>' +
+                    '<button style="padding:5px 14px;background:#f5f5f5;color:#666;border:1px solid #ddd;border-radius:4px;cursor:pointer;font-size:13px;" onclick="handleJoinRequest('+r.id+',\'reject\',\''+r.username+'\')">拒绝</button>' +
+                    '</div></div>';
+            }).join('');
+            listEl.style.display='block';
+            emptyEl.style.display='none';
+        }else{
+            listEl.innerHTML='';
+            emptyEl.style.display='block';
+        }
+    }catch(e){}
+}
+function escapeHtml(text){
+    const div=document.createElement('div');
+    div.textContent=text==null?'':text;
+    return div.innerHTML;
+}
+async function handleJoinRequest(reqId, action, username){
+    const tip = action==='approve' ? '确定同意「'+username+'」入群吗？' : '确定拒绝「'+username+'」的入群申请吗？';
+    if(!confirm(tip)) return;
+    const fd=new FormData();
+    fd.append('action',action);
+    fd.append('csrfmiddlewaretoken',csrfToken);
+    try{
+        const resp=await fetch('/api/group/'+groupId+'/join-request/'+reqId+'/handle/',{method:'POST',body:fd,credentials:'same-origin'});
+        const data=await resp.json();
+        if(resp.ok){alert(action==='approve'?('已同意 '+username+' 入群'):'已拒绝该申请');loadJoinRequests();}
+        else{alert(data.error||'操作失败');}
+    }catch(e){alert('网络错误');}
+}
+if(isOwner) loadJoinRequests();
+async function disbandGroup(){
+    if(!confirm('确定解散该群聊吗？此操作不可恢复，所有成员和消息将被删除。'))return;
+    if(!confirm('再次确认：解散后无法找回。确定继续？'))return;
+    const fd=new FormData();
+    fd.append('csrfmiddlewaretoken',csrfToken);
+    try{
+        const resp=await fetch('/api/group/'+groupId+'/disband/',{method:'POST',body:fd,credentials:'same-origin'});
+        const data=await resp.json();
+        if(resp.ok){alert(data.msg||'群聊已解散');location.href='/groups/';}
+        else{alert(data.error||'解散失败');}
+    }catch(e){alert('网络错误');}
+}
+</script>
+</body>
+</html>

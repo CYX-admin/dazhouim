@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大周IM</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f5f5;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+.card{width:360px;padding:40px 36px;background:#fff;border:1px solid #e8e8e8;border-radius:8px;}
+.logo{text-align:center;margin-bottom:32px;}
+.logo h1{font-size:20px;font-weight:600;color:#1a1a1a;}
+.field{margin-bottom:20px;}
+.field input{width:100%;padding:10px 12px;border:1px solid #d9d9d9;border-radius:6px;font-size:14px;color:#333;outline:none;transition:border-color .2s;}
+.field input:focus{border-color:#07c160;}
+.field input::placeholder{color:#bbb;}
+.submit{width:100%;padding:11px;background:#07c160;color:#fff;border:none;border-radius:6px;font-size:15px;cursor:pointer;margin-top:4px;}
+.submit:hover{background:#06ad56;}
+.error{background:#fff2f0;border:1px solid #ffccc7;color:#cf1322;padding:10px 12px;border-radius:6px;font-size:13px;margin-bottom:20px;}
+.success{background:#f6ffed;border:1px solid #b7eb8f;color:#389e0d;padding:10px 12px;border-radius:6px;font-size:13px;margin-bottom:20px;}
+.footer{text-align:center;margin-top:28px;font-size:12px;color:#999;}
+.footer a{color:#666;text-decoration:none;}
+.footer a:hover{color:#07c160;}
+</style>
+</head>
+<body>
+<div class="card">
+<div class="logo"><h1>大周IM</h1></div>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+{% if deleted_msg %}<div class="success">{{ deleted_msg }}</div>{% endif %}
+<form method="post">
+{% csrf_token %}
+<div class="field"><input type="text" name="username" placeholder="用户名" required autofocus></div>
+<div class="field"><input type="password" name="password" placeholder="密码" required></div>
+<button type="submit" class="submit">登 录</button>
+</form>
+<div class="footer">
+<a href="/register/">注册账号</a> &middot; <a href="/privacy/">隐私协议</a>
+</div>
+</div>
+</body>
+</html>

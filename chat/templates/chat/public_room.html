@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公共聊天室 - 大周IM</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#ededed;height:100vh;display:flex;flex-direction:column;}
+.header{background:#2c2c2c;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.header h1{font-size:17px;font-weight:600;}
+.header .user-info{font-size:13px;}
+.header .user-info a{color:#9ecfff;margin-left:12px;text-decoration:none;}
+.header .user-info a:hover{text-decoration:underline;}
+.main{flex:1;display:flex;overflow:hidden;}
+.chat-area{flex:1;display:flex;flex-direction:column;background:#ededed;min-width:0;}
+.messages{flex:1;overflow-y:auto;padding:16px 12px;}
+.messages::-webkit-scrollbar{width:6px;}
+.messages::-webkit-scrollbar-thumb{background:#c1c1c1;border-radius:3px;}
+.msg{display:flex;margin-bottom:16px;align-items:flex-start;}
+.msg.own{flex-direction:row-reverse;}
+.avatar{width:38px;height:38px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:600;overflow:hidden;}
+.msg-body{max-width:65%;margin:0 8px;display:flex;flex-direction:column;min-width:0;}
+.msg.own .msg-body{align-items:flex-end;}
+.msg.other .msg-body{align-items:flex-start;}
+.meta{font-size:12px;color:#888;margin-bottom:4px;padding:0 2px;display:flex;align-items:center;gap:8px;}
+.meta .username{font-weight:600;}
+.meta .time{color:#aaa;}
+.bubble{position:relative;padding:9px 12px;border-radius:6px;font-size:14px;line-height:1.5;word-break:break-word;white-space:pre-wrap;max-width:100%;}
+.msg.other .bubble{background:#fff;color:#333;}
+.msg.own .bubble{background:#95ec69;color:#1a1a1a;}
+.deleted-txt{color:#999;font-style:italic;font-size:13px;}
+.attachment{margin-top:6px;}
+.attachment img{max-width:220px;max-height:220px;border-radius:6px;display:block;}
+.attachment a{color:#1a73e8;font-size:13px;text-decoration:none;}
+.input-area{padding:10px 14px;border-top:1px solid #d8d8d8;background:#f7f7f7;display:flex;gap:8px;flex-direction:column;flex-shrink:0;}
+.input-row{display:flex;gap:8px;align-items:flex-end;}
+.input-area textarea{flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:5px;resize:none;font-size:14px;height:40px;line-height:1.4;background:#fff;outline:none;font-family:inherit;}
+.input-area textarea:focus{border-color:#07c160;}
+.attach-btn{padding:8px 14px;background:#f5f7fa;color:#1a73e8;border:1px solid #d0d7de;border-radius:6px;cursor:pointer;font-size:13px;}
+.send{padding:8px 20px;background:#07c160;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;height:40px;}
+.send:hover{background:#06ad56;}
+.muted-notice{background:#fff3cd;color:#856404;padding:8px 16px;text-align:center;font-size:13px;}
+.verify-notice{background:#e8f0fe;color:#174ea6;padding:8px 16px;text-align:center;font-size:13px;}
+.action-btn{font-size:11px;color:#576b95;cursor:pointer;background:none;border:none;padding:0;margin-top:4px;margin-left:8px;}
+.action-btn:hover{text-decoration:underline;}
+.back-link{color:#9ecfff;text-decoration:none;font-size:13px;margin-right:12px;}
+.forward-from{font-size:11px;color:#999;margin-bottom:4px;text-align:left;}
+.msg.own .forward-from{align-self:flex-end;}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>公共聊天室 <a href="/chat/" class="back-link" style="font-size:12px;">返回主页</a></h1>
+<div class="user-info">
+{{ request.user.username }}
+<a href="/favorites/">收藏</a>
+<a href="/account/">资料</a>
+<a href="/logout/">退出</a>
+</div>
+</div>
+{% if is_muted %}<div class="muted-notice">您已被管理员禁言，无法发送消息</div>{% endif %}
+{% if not email_verified %}<div class="verify-notice">邮箱尚未验证，请到个人资料完成验证 <a href="/account/">去验证</a></div>{% endif %}
+<div class="main">
+<div class="chat-area">
+<div class="messages" id="messages">
+{% for msg in messages %}
+<div class="msg {% if msg.user == request.user %}own{% else %}other{% endif %}" data-id="{{ msg.id }}">
+<div class="avatar" style="background:hsl({{ msg.user.id|stringformat:'d'|last }}0,60%,55%)">{{ msg.user.username|first|upper }}</div>
+<div class="msg-body">
+<div class="meta"><span class="username">{{ msg.user.username }}</span><span class="time">{{ msg.timestamp|date:"H:i" }}</span></div>
+{% if msg.is_deleted %}
+<div class="bubble deleted-txt">消息已撤回</div>
+{% else %}
+{% if msg.forwarded_from %}
+<div class="forward-from">{{ msg.forwarded_from }}</div>
+{% endif %}
+<div class="bubble">{{ msg.content }}</div>
+{% if msg.attachment %}
+<div class="attachment" data-url="{{ msg.attachment.url }}" data-name="{{ msg.attachment_name|default:'' }}" data-type="{{ msg.attachment_type }}"></div>
+{% endif %}
+{% endif %}
+</div>
+</div>
+{% endfor %}
+</div>
+<div class="input-area">
+<div class="input-row">
+<textarea id="msgInput" placeholder="输入消息，按 Enter 发送..." {% if is_muted %}disabled{% endif %}></textarea>
+<label class="attach-btn"><input type="file" id="attachInput" style="display:none;" onchange="selectAttach(this)">附件</label>
+<button type="button" class="send" id="sendBtn" onclick="sendMessage()" {% if is_muted %}disabled{% endif %}>发送</button>
+</div>
+</div>
+</div>
+</div>
+<script src="/static/chat/js/attachment.js?v=20260922a"></script>
+<script>
+const csrfToken='{{ csrf_token }}';
+const currentUsername='{{ request.user.username|escapejs }}';
+let lastMsgId=0,attachFile=null;
+const messagesEl=document.getElementById('messages');
+const msgInput=document.getElementById('msgInput');
+const sendBtn=document.getElementById('sendBtn');
+const isMuted={{ is_muted|yesno:"true,false" }};
+function scrollBottom(){messagesEl.scrollTop=messagesEl.scrollHeight;}
+function escapeHtml(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+function avatarColor(id){return 'hsl('+(id%10*10)+',60%,55%)';}
+function selectAttach(input){if(input.files&&input.files[0]){attachFile=input.files[0];}}
+function buildMessageHtml(m){
+const isOwn=m.username===currentUsername;
+const cls=isOwn?'own':'other';
+const firstChar=escapeHtml(m.username.charAt(0).toUpperCase());
+if(m.is_deleted)return '<div class="msg '+cls+'" data-id="'+m.id+'"><div class="avatar" style="'+avatarColor(m.user_id)+'">'+firstChar+'</div><div class="msg-body"><div class="bubble deleted-txt">消息已撤回</div></div></div>';
+let html='<div class="msg '+cls+'" data-id="'+m.id+'"><div class="avatar" style="'+avatarColor(m.user_id)+'">'+firstChar+'</div><div class="msg-body"><div class="meta"><span class="username">'+escapeHtml(m.username)+'</span><span class="time">'+(m.time||'')+'</span></div>'+(m.forwarded_from?'<div class="forward-from">'+escapeHtml(m.forwarded_from)+'</div>':'')+'<div class="bubble">'+escapeHtml(m.content)+'</div>';
+if(m.attachment) html += buildAttachmentHtml(m.attachment);
+return html+'</div></div>';
+}
+async function fetchMessages(){
+try{
+const resp=await fetch('/api/messages/?last_id='+lastMsgId);
+const data=await resp.json();
+let hasNew=false;
+data.messages.forEach(m=>{
+if(document.querySelector('.msg[data-id="'+m.id+'"]'))return;
+if(m.id>lastMsgId)lastMsgId=m.id;
+messagesEl.insertAdjacentHTML('beforeend',buildMessageHtml(m));
+hasNew=true;
+});
+if(hasNew)scrollBottom();
+}catch(e){}
+}
+async function sendMessage(){
+const content=msgInput.value.trim();
+if((!content&&!attachFile)||isMuted)return;
+sendBtn.disabled=true;
+try{
+const fd=new FormData();
+if(content)fd.append('content',content);
+fd.append('csrfmiddlewaretoken',csrfToken);
+if(attachFile)fd.append('attachment',attachFile);
+const resp=await fetch('/api/send/',{method:'POST',body:fd,credentials:'same-origin'});
+if(resp.ok){msgInput.value='';attachFile=null;document.getElementById('attachInput').value='';fetchMessages();}
+else{const err=await resp.json();alert(err.error||'发送失败');}
+}catch(e){alert('网络错误');}
+sendBtn.disabled=false;
+}
+msgInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}});
+function initLastMsgId(){
+let maxId=0;
+messagesEl.querySelectorAll('.msg[data-id]').forEach(row=>{const id=parseInt(row.getAttribute('data-id'),10);if(id>maxId)maxId=id;});
+lastMsgId=maxId;
+}
+initLastMsgId();scrollBottom();
+setInterval(fetchMessages,2000);
+</script>
+</body>
+</html>

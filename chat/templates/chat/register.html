@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>注册 - 大周IM</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; }
+.auth-container { max-width: 400px; margin: 80px auto; padding: 30px; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+.auth-container h1 { text-align: center; margin-bottom: 6px; color: #1a73e8; font-size: 24px; }
+.operator { text-align: center; font-size: 12px; color: #666; margin-bottom: 20px; }
+.operator .company { color: #d93025; font-weight: 700; }
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 6px; font-weight: 500; }
+.form-control { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+.form-control:focus { outline: none; border-color: #1a73e8; }
+.btn { display: inline-block; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; text-decoration: none; }
+.btn-primary { background: #1a73e8; color: #fff; width: 100%; }
+.btn-primary:hover { background: #1557b0; }
+.error { color: #dc3545; background: #f8d7da; padding: 10px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; }
+.auth-link { text-align: center; margin-top: 16px; }
+.auth-link a { color: #1a73e8; text-decoration: none; }
+.tip { font-size: 12px; color: #888; margin-top: 4px; }
+.privacy-notice { border: 2px solid #1a73e8; background: #f0f7ff; border-radius: 8px; padding: 12px 14px; margin: 18px 0 14px; font-size: 13px; line-height: 1.7; color: #333; }
+.privacy-notice .privacy-title { font-weight: 700; color: #1a73e8; margin-bottom: 4px; }
+.privacy-notice .company { color: #d93025; font-weight: 700; }
+.privacy-notice a { color: #1a73e8; }
+.checkbox-label { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; color: #444; font-weight: 400; cursor: pointer; }
+.checkbox-label input { margin-top: 2px; }
+.checkbox-label a { color: #1a73e8; text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="auth-container">
+<h1>大周IM 注册</h1>
+<div class="operator">运营主体：<span class="company">南昌大周网络科技工作室（Nanchang Elder Zhou Network Technological Studio）</span></div>
+{% if form.errors %}
+<div class="error">
+{% for field in form %}{% for error in field.errors %}{{ error }}
+{% endfor %}{% endfor %}
+{% for error in form.non_field_errors %}{{ error }}
+{% endfor %}
+</div>
+{% endif %}
+<form method="post">
+{% csrf_token %}
+<div class="form-group"><label>用户名（3-20字符，字母/数字/下划线）</label>{{ form.username }}</div>
+<div class="form-group"><label>邮箱（可选填）</label>{{ form.email }}<div class="tip">选填，可用于找回密码等功能。</div></div>
+<div class="form-group"><label>密码（至少4位）</label>{{ form.password }}</div>
+<div class="form-group"><label>确认密码</label>{{ form.confirm_password }}</div>
+<div class="privacy-notice">
+<div class="privacy-title">《隐私协议》· 注册前请仔细阅读</div>
+本服务由 <span class="company">南昌大周网络科技工作室（Nanchang Elder Zhou Network Technological Studio）</span> 运营并提供。您的用户名、邮箱、聊天内容及登录信息将按照《隐私协议》进行收集、存储与保护。请点击查看<a href="/privacy/" target="_blank">《隐私协议》全文</a>。
+</div>
+<div class="form-group">
+<label class="checkbox-label">
+{{ form.agree_privacy }}
+<span>我已阅读并同意 <a href="/privacy/" target="_blank">《隐私协议》</a>，同意以上条款后即可注册使用本服务。</span>
+</label>
+</div>
+<button type="submit" class="btn btn-primary">注册</button>
+</form>
+<div class="auth-link">已有账号? <a href="/login/">去登录</a></div>
+</div>
+</body>
+</html>

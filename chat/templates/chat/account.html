@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人资料 - 大周IM</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; }
+.header { background: #1a73e8; color: #fff; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+.header h1 { font-size: 18px; }
+.header a { color: #fff; margin-left: 12px; text-decoration: underline; font-size: 14px; }
+.container { max-width: 600px; margin: 40px auto; padding: 30px; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+.container h2 { margin-bottom: 20px; color: #1a73e8; font-size: 18px; }
+.info-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #eee; }
+.info-row .label { color: #666; }
+.info-row .value { font-weight: 500; }
+.badge-ok { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; background: #d4edda; color: #155724; }
+.badge-pending { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; background: #fff3cd; color: #856404; }
+.btn { display: inline-block; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; text-decoration: none; }
+.btn-primary { background: #1a73e8; color: #fff; }
+.btn-primary:hover { background: #1557b0; }
+.btn-success { background: #28a745; color: #fff; }
+.btn-success:hover { background: #218838; }
+.btn-outline { background: #fff; color: #1a73e8; border: 1px solid #1a73e8; }
+.btn-outline:hover { background: #f0f6ff; }
+.mt20 { margin-top: 20px; }
+.mb12 { margin-bottom: 12px; }
+.error { color: #dc3545; background: #f8d7da; padding: 10px; border-radius: 6px; margin-bottom: 14px; font-size: 13px; }
+.success { color: #155724; background: #d4edda; padding: 10px; border-radius: 6px; margin-bottom: 14px; font-size: 13px; }
+.section { padding: 16px 0; border-bottom: 1px solid #eee; }
+.section:last-child { border-bottom: none; }
+.section h3 { font-size: 15px; color: #333; margin-bottom: 10px; }
+.form-inline { display: flex; gap: 8px; align-items: center; }
+.form-inline input[type="text"], .form-inline input[type="email"] { flex: 1; padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; }
+.form-inline input:focus { border-color: #1a73e8; }
+.tip { font-size: 12px; color: #888; margin-top: 6px; }
+.code-input { width: 160px; padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 18px; text-align: center; letter-spacing: 6px; outline: none; }
+.code-input:focus { border-color: #1a73e8; }
+.avatar-section{display:flex;align-items:center;gap:20px;padding:14px 0;border-bottom:1px solid #eee;}
+.avatar-preview{width:80px;height:80px;border-radius:50%;background:#1a73e8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:600;overflow:hidden;flex-shrink:0;}
+.avatar-preview img{width:100%;height:100%;object-fit:cover;}
+.avatar-upload{flex:1;}
+.avatar-upload h3{font-size:15px;color:#333;margin-bottom:10px;}
+.avatar-upload input[type=file]{margin-bottom:10px;}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>个人资料</h1>
+<div><a href="/chat/">公共聊天室</a><a href="/private/">私聊</a><a href="/favorites/">我的收藏</a><a href="/logout/">退出</a></div>
+</div>
+<div class="container">
+<h2>账号信息</h2>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+{% if success %}<div class="success">{{ success }}</div>{% endif %}
+<div class="info-row"><span class="label">用户名</span><span class="value">{{ request.user.username }}</span></div>
+<div class="info-row"><span class="label">昵称</span><span class="value">{{ nickname|default:"未设置" }}</span></div>
+<div class="avatar-section"><div class="avatar-preview">{% if request.user.profile.avatar %}<img src="{{ request.user.profile.avatar.url }}" alt="头像">{% else %}{{ request.user.username|first|upper }}{% endif %}</div><div class="avatar-upload"><h3>头像</h3><form method="post" enctype="multipart/form-data" class="form-inline">{% csrf_token %}<input type="hidden" name="action" value="upload_avatar"><input type="file" name="avatar" accept="image/*"><button type="submit" class="btn-primary">上传头像</button></form></div></div>
+<div class="info-row"><span class="label">邮箱</span><span class="value">{{ email|default:"未设置" }}</span></div>
+<div class="info-row">
+<span class="label">邮箱验证状态</span>
+<span class="value">
+{% if email_verified %}<span class="badge-ok">已验证</span>
+{% else %}<span class="badge-pending">未验证</span>{% endif %}
+</span>
+</div>
+
+{% if not email_verified and email %}
+<div class="section">
+<h3>完成邮箱验证</h3>
+<form method="post" class="form-inline">
+{% csrf_token %}
+<input type="hidden" name="action" value="verify">
+<input type="text" name="code" class="code-input" maxlength="6" inputmode="numeric" placeholder="验证码" required>
+<button type="submit" class="btn btn-success">验证</button>
+</form>
+<form method="post" class="mt20">
+{% csrf_token %}
+<input type="hidden" name="action" value="resend">
+<button type="submit" class="btn btn-outline">重新发送验证码</button>
+</form>
+<div class="tip">验证码已发送到 {{ email }}，请查收（10分钟内有效）。</div>
+</div>
+{% endif %}
+
+<div class="section">
+<h3>修改昵称</h3>
+<form method="post" class="form-inline">
+{% csrf_token %}
+<input type="hidden" name="action" value="set_nickname">
+<input type="text" name="nickname" maxlength="30" value="{{ nickname }}" placeholder="输入昵称">
+<button type="submit" class="btn btn-primary">保存</button>
+</form>
+</div>
+
+<div class="section">
+<h3>个性签名</h3>
+<form method="post" class="form-inline">
+{% csrf_token %}
+<input type="hidden" name="action" value="set_signature">
+<input type="text" name="signature" maxlength="80" value="{{ signature }}" placeholder="写下你的个性签名（最多80字）">
+<button type="submit" class="btn btn-primary">保存</button>
+</form>
+</div>
+
+<div class="section">
+<h3>在线状态</h3>
+<form method="post" class="form-inline">
+{% csrf_token %}
+<input type="hidden" name="action" value="set_status">
+<select name="status" style="flex:1;padding:9px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;background:#fff;">
+{% for value, label in status_choices %}
+<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+{% endfor %}
+</select>
+<button type="submit" class="btn btn-primary">保存</button>
+</form>
+</div>
+
+<div class="section">
+<h3>修改邮箱</h3>
+<form method="post" class="form-inline">
+{% csrf_token %}
+<input type="hidden" name="action" value="change_email">
+<input type="email" name="email" value="{{ email }}" placeholder="新邮箱地址" required>
+<button type="submit" class="btn btn-primary">更新邮箱</button>
+</form>
+<div class="tip">修改邮箱后需重新验证，验证码将发送到新邮箱。</div>
+</div>
+
+<div class="section">
+<h3>修改密码</h3>
+<form method="post" class="form-inline" style="flex-direction:column;align-items:stretch;gap:8px;">
+{% csrf_token %}
+<input type="hidden" name="action" value="change_password">
+<input type="password" name="old_password" placeholder="原密码" required style="padding:9px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;">
+<input type="password" name="new_password" placeholder="新密码（至少4位）" required style="padding:9px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;">
+<input type="password" name="confirm_password" placeholder="确认新密码" required style="padding:9px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;">
+<button type="submit" class="btn btn-primary" style="align-self:flex-start;">修改密码</button>
+</form>
+</div>
+
+<div class="section" style="border-bottom:none;">
+<h3 style="color:#d32f2f;">注销账号</h3>
+<div class="tip" style="color:#d32f2f;margin-bottom:10px;">警告：注销后账号将被禁用，无法恢复，所有聊天记录将保留但无法登录。</div>
+<form method="post" class="form-inline" onsubmit="return confirm('确定要注销账号吗？此操作不可恢复！');">
+{% csrf_token %}
+<input type="hidden" name="action" value="delete_account">
+<input type="password" name="confirm_password" placeholder="输入当前密码确认注销" required style="flex:1;padding:9px 12px;border:1px solid #ffcdd2;border-radius:6px;font-size:14px;">
+<button type="submit" class="btn" style="background:#d32f2f;color:#fff;">注销账号</button>
+</form>
+</div>
+</div>
+</body>
+</html>

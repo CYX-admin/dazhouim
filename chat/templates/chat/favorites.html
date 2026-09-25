@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的收藏 - 大周IM</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f0f2f5;min-height:100vh;}
+.header{background:#2c2c2c;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;}
+.header h1{font-size:17px;font-weight:600;}
+.header a{color:#9ecfff;font-size:13px;text-decoration:none;margin-left:12px;}
+.header a:hover{text-decoration:underline;}
+.container{max-width:700px;margin:20px auto;padding:0 16px;}
+.empty{text-align:center;color:#999;padding:60px 0;font-size:14px;}
+.fav-item{background:#fff;border-radius:8px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.08);position:relative;}
+.fav-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.fav-sender{font-size:13px;color:#576b95;font-weight:600;}
+.fav-type{font-size:11px;color:#999;background:#f0f0f0;padding:2px 6px;border-radius:3px;}
+.fav-content{font-size:14px;color:#333;line-height:1.6;word-break:break-word;white-space:pre-wrap;}
+.fav-attachment{margin-top:6px;}
+.fav-attachment a{color:#1a73e8;font-size:13px;text-decoration:none;}
+.fav-attachment a:hover{text-decoration:underline;}
+.fav-time{font-size:11px;color:#bbb;margin-top:6px;}
+.fav-remove{position:absolute;top:10px;right:12px;background:none;border:none;color:#dc3545;font-size:12px;cursor:pointer;padding:2px 6px;}
+.fav-remove:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>我的收藏</h1>
+<div>
+<a href="/chat/">公共大厅</a>
+<a href="/private/">私聊列表</a>
+<a href="/groups/">群列表</a>
+<a href="/account/">个人中心</a>
+<a href="/logout/">退出</a>
+</div>
+</div>
+<div class="container">
+{% if favorites %}
+{% for fav in favorites %}
+<div class="fav-item" data-id="{{ fav.id }}">
+<button class="fav-remove" onclick="removeFavorite({{ fav.id }})">删除</button>
+<div class="fav-meta">
+<span class="fav-sender">{{ fav.sender_username|default:"未知用户" }}</span>
+<span class="fav-type">{% if fav.message_type == 'private' %}私聊{% elif fav.message_type == 'group' %}群聊{% else %}公共{% endif %}</span>
+</div>
+<div class="fav-content">{{ fav.message_content }}</div>
+{% if fav.attachment_url %}
+<div class="fav-attachment"><a href="{{ fav.attachment_url }}" target="_blank">{{ fav.attachment_name|default:"附件" }}</a></div>
+{% endif %}
+<div class="fav-time">{{ fav.created_at|date:"Y-m-d H:i" }}</div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty">暂无收藏内容</div>
+{% endif %}
+</div>
+<script>
+const csrfToken='{{ csrf_token }}';
+async function removeFavorite(id){
+    if(!confirm('确定删除这条收藏吗？'))return;
+    try{
+        const fd=new FormData();
+        fd.append('csrfmiddlewaretoken',csrfToken);
+        const resp=await fetch('/api/favorite/remove/'+id+'/',{method:'POST',body:fd,credentials:'same-origin'});
+        if(resp.ok){
+            document.querySelector('.fav-item[data-id="'+id+'"]').remove();
+            if(!document.querySelector('.fav-item')){
+                document.querySelector('.container').innerHTML='<div class="empty">暂无收藏内容</div>';
+            }
+        }else{
+            const err=await resp.json();
+            alert(err.error||'删除失败');
+        }
+    }catch(e){alert('网络错误');}
+}
+</script>
+</body>
+</html>
