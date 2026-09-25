@@ -7,6 +7,9 @@
 - 牌堆构成：1 有 6 张，9 有 2 张，2-8 各 4 张，共 36 张。
 - 游戏开始每人摸 1 张起始手牌，随机座位，按顺时针顺序行动。
 - 每回合：先从牌堆摸 1 张，再打出 1 张（9 不能打出）。
+- 手牌上限：你的回合最多 2 张；不是你的回合（别人回合）最多 1 张。
+- 出不了牌时必须弃牌过回合：由自己选择要弃的牌（9 不能主动弃出）。
+- 对方免疫护盾不豁免手牌上限，超出的牌必须弃掉（无法弃牌的全 9 例外）。
 - 牌效果：
     1 猜牌   : 猜一名角色的一张手牌点数，猜对则对方死亡
     2 看牌   : 查看一名角色的手牌（仅自己可见）
@@ -49,6 +52,9 @@ MAX_PLAYERS = 6
 ROOM_TTL = 7200  # 房间 2 小时无操作自动清理
 TURN_TIMEOUT = 90   # 轮到的玩家 90 秒无操作，系统自动跳过其回合
 PENDING_TIMEOUT = 60  # 比大小/弃牌/观星等待者 60 秒无响应，系统自动处理
+# 手牌上限
+MAX_HAND_ON_TURN = 2   # 你的回合（轮到你自己行动）手牌最多 2 张
+MAX_HAND_OFF_TURN = 1  # 别人的回合手牌最多 1 张
 
 
 def build_deck():
@@ -132,7 +138,32 @@ class GameRoom:
         return True
 
     # ---------------- 回合控制 ----------------
+    def _hand_limit(self, uid):
+        """某玩家当前手牌上限：自己的回合 2 张，别人回合 1 张"""
+        if self.status == "playing" and self.seats and self.seats[self.turn_index] == uid:
+            return MAX_HAND_ON_TURN
+        return MAX_HAND_OFF_TURN
+
+    def _maybe_trigger_overflow_discard(self):
+        """若存在手牌超出上限且可弃（含非 9 牌）的存活玩家，发起弃牌待处理，暂停回合推进。
+        手牌全为 9 的玩家无法弃牌，视为规则内例外，不在此触发。
+        返回是否触发。"""
+        if self.status != "playing":
+            return False
+        for u in self.alive_uids():
+            p = self.players[u]
+            limit = self._hand_limit(u)
+            if len(p.hand) > limit and any(c != 9 for c in p.hand):
+                self.pending = {"type": "overflow_discard", "player": u}
+                self.phase = "effect"
+                self.add_log(f"{p.username} 手牌超出上限（{len(p.hand)}/{limit}），请弃掉一张牌（9 除外）")
+                return True
+        return False
+
     def _advance_turn(self):
+        # 先执行手牌上限检查：任何存活玩家手牌超出上限时，先由其弃牌，回合暂不推进
+        if self._maybe_trigger_overflow_discard():
+            return
         n = len(self.seats)
         if n == 0:
             return
@@ -296,16 +327,19 @@ class GameRoom:
         target = str(payload["target_id"])
         tp = self.players[target]
         self.add_log(f"{self.players[uid].username} 指定 {tp.username} 弃一张手牌并摸一张")
-        if len(tp.hand) > 1:
+        discardable = [c for c in tp.hand if c != 9]
+        if len(discardable) > 1:
             self.pending = {"type": "discard", "player": target}
             self.phase = "effect"
-        elif len(tp.hand) == 1:
-            c = tp.hand.pop(0)
+        elif len(discardable) == 1:
+            c = discardable[0]
+            tp.hand.remove(c)
             self.discard.append(c)
             self._draw_for(target)
             if self.status != "finished":
                 self._advance_turn()
         else:
+            # 空手或手牌全为 9：无可弃牌，跳过弃牌直接摸一张
             self._draw_for(target)
             if self.status != "finished":
                 self._advance_turn()
@@ -357,9 +391,9 @@ class GameRoom:
         self.players[uid].hand.append(card)
         self.phase = "play"
         self.add_log(f"{self.players[uid].username} 摸了一张牌")
-        # 若手牌全是9（死亡牌，无牌可出），自动跳过出牌避免卡死
+        # 若手牌全是9（死亡牌，不能打出也不能弃出），自动跳过出牌避免卡死
         if all(c == 9 for c in self.players[uid].hand):
-            self.add_log(f"{self.players[uid].username} 手牌全是死亡牌，本回合跳过出牌")
+            self.add_log(f"{self.players[uid].username} 手牌全是死亡牌，无法弃牌，本回合跳过出牌")
             self._advance_turn()
         return True, None
 
@@ -415,8 +449,9 @@ class GameRoom:
             self._effect_force(uid)
         return True, None
 
-    def _act_pass(self, uid):
-        """跳过出牌：任何情况下保证回合可推进（但手中有 5/7 且有 8 时禁止跳过）"""
+    def _act_pass(self, uid, card_id=None):
+        """弃牌过回合：出不了牌时必须弃掉一张牌（9 除外，由玩家自选）后结束回合。
+        手牌全为 9（无牌可弃）时可直接跳过；手中有 5/7 且有 8 时禁止跳过。"""
         if uid != self.seats[self.turn_index]:
             return False, "还没轮到你出牌"
         if self.phase != "play":
@@ -425,8 +460,16 @@ class GameRoom:
             return False, "有操作待处理"
         hand = self.players[uid].hand
         if (5 in hand or 7 in hand) and 8 in hand:
-            return False, "你手中有 5 或 7，必须打出 8，不能跳过"
-        self.add_log(f"{self.players[uid].username} 跳过出牌")
+            return False, "你手中有 5 或 7，必须打出 8，不能弃牌跳过"
+        discardable = [c for c in hand if c != 9]
+        if discardable:
+            if card_id not in hand or card_id == 9:
+                return False, "请选择要弃掉的一张牌（9 除外）"
+            hand.remove(card_id)
+            self.discard.append(card_id)
+            self.add_log(f"{self.players[uid].username} 弃掉了「{card_id}」并跳过出牌")
+        else:
+            self.add_log(f"{self.players[uid].username} 手牌全是死亡牌，无法弃牌，跳过出牌")
         self._advance_turn()
         return True, None
 
@@ -468,10 +511,30 @@ class GameRoom:
         card = payload.get("card_id")
         if card not in self.players[uid].hand:
             return False, "你手牌中没有这张牌"
+        if card == 9:
+            return False, "9 是死亡牌，不能弃出"
         self.players[uid].hand.remove(card)
         self.discard.append(card)
         self.pending = None
         self._draw_for(uid)
+        if self.status != "finished":
+            self._advance_turn()
+        return True, None
+
+    def _act_overflow_discard(self, uid, payload):
+        """手牌超出上限时，玩家自选弃掉一张牌（9 除外）"""
+        pen = self.pending
+        if not pen or pen.get("type") != "overflow_discard" or pen.get("player") != uid:
+            return False, "当前不需要你弃牌"
+        card = payload.get("card_id")
+        if card not in self.players[uid].hand:
+            return False, "你手牌中没有这张牌"
+        if card == 9:
+            return False, "9 是死亡牌，不能弃出"
+        self.players[uid].hand.remove(card)
+        self.discard.append(card)
+        self.pending = None
+        self.add_log(f"{self.players[uid].username} 弃掉了「{card}」（手牌超出上限）")
         if self.status != "finished":
             self._advance_turn()
         return True, None
@@ -527,11 +590,32 @@ class GameRoom:
                                 acted += 1
                                 continue
                         elif pen["type"] == "discard":
-                            if p.hand:
-                                self._act_discard_choose(waiter, {"card_id": min(p.hand)})
+                            discardable = [c for c in p.hand if c != 9]
+                            if discardable:
+                                self._act_discard_choose(waiter, {"card_id": min(discardable)})
                                 self.add_log("（对方长时间未响应，系统自动弃牌）")
-                                acted += 1
-                                continue
+                            else:
+                                # 无可弃牌（空手/全9）：跳过弃牌直接摸一张
+                                self.pending = None
+                                self._draw_for(waiter)
+                                self.add_log("（对方长时间未响应且无可弃牌，系统自动摸牌）")
+                                if self.status == "playing":
+                                    self._advance_turn()
+                            acted += 1
+                            continue
+                        elif pen["type"] == "overflow_discard":
+                            discardable = [c for c in p.hand if c != 9]
+                            if discardable:
+                                self._act_overflow_discard(waiter, {"card_id": min(discardable)})
+                                self.add_log("（对方长时间未响应，系统自动弃牌）")
+                            else:
+                                # 无可弃牌（全9例外）：解除等待让回合推进
+                                self.pending = None
+                                if self.status == "playing":
+                                    self._advance_turn()
+                                self.add_log("（对方长时间未响应，系统解除等待）")
+                            acted += 1
+                            continue
                         elif pen["type"] == "stargaze":
                             cards = pen["cards"]
                             if cards:
@@ -559,8 +643,13 @@ class GameRoom:
                     self._act_play(cur, {"card_id": 8})
                     self.add_log(f"（{curp.username} 长时间未操作，系统自动打出强制8）")
                 else:
-                    self._act_pass(cur)
-                    self.add_log(f"（{curp.username} 长时间未操作，系统自动跳过回合）")
+                    discardable = [c for c in curp.hand if c != 9]
+                    if discardable:
+                        self._act_pass(cur, discardable[0])
+                        self.add_log(f"（{curp.username} 长时间未操作，系统自动弃牌过回合）")
+                    else:
+                        self._act_pass(cur, None)
+                        self.add_log(f"（{curp.username} 长时间未操作，系统自动跳过回合）")
                 acted += 1
                 continue
             break
@@ -583,10 +672,12 @@ class GameRoom:
             return self._act_compare_choose(uid, payload)
         if action == "discard_choose":
             return self._act_discard_choose(uid, payload)
+        if action == "overflow_discard":
+            return self._act_overflow_discard(uid, payload)
         if action == "stargaze_order":
             return self._act_stargaze_order(uid, payload)
         if action == "pass":
-            return self._act_pass(uid)
+            return self._act_pass(uid, payload.get("card_id"))
         if action == "surrender":
             return self._act_surrender(uid)
         return False, "未知操作"
@@ -634,6 +725,11 @@ class GameRoom:
                     pend_view = {"type": "stargaze_choose", "cards": pen["cards"], "waiting": True, "player_uid": pen["player"]}
                 else:
                     pend_view = {"type": "stargaze_other", "player": pen["player"], "player_uid": pen["player"]}
+            elif pen["type"] == "overflow_discard":
+                if pen["player"] == uid:
+                    pend_view = {"type": "overflow_discard", "waiting": True, "player_uid": pen["player"]}
+                else:
+                    pend_view = {"type": "overflow_other", "player": pen["player"], "player_uid": pen["player"]}
         state = {
             "room_id": self.room_id,
             "status": self.status,
@@ -657,6 +753,8 @@ class GameRoom:
             "card_names": CARD_NAMES,
             "turn_timeout": TURN_TIMEOUT,
             "pending_timeout": PENDING_TIMEOUT,
+            "max_hand_on_turn": MAX_HAND_ON_TURN,
+            "max_hand_off_turn": MAX_HAND_OFF_TURN,
         }
         return state
 

@@ -140,7 +140,7 @@ a{color:#07c160;text-decoration:none;}
 <div id="view-lobby">
   <div class="hero">
     <h1>数字大逃杀</h1>
-    <p>2-6 人联机卡牌对战 · 牌堆 36 张（1×6、2-8 各×4、9×2）<br>每回合摸 1 张、打出 1 张，用牌技活到最后</p>
+    <p>2-6 人联机卡牌对战 · 牌堆 36 张（1×6、2-8 各×4、9×2）<br>每回合摸 1 张、打出 1 张，手牌上限 2 张（别人回合 1 张），用牌技活到最后</p>
     <div class="btns">
       <button class="btn" onclick="createRoom()">创建房间</button>
       <button class="btn second" onclick="document.getElementById('joinInput').focus()">加入房间</button>
@@ -161,6 +161,8 @@ a{color:#07c160;text-decoration:none;}
       · 牌堆：<b>1 有 6 张、9 有 2 张、2-8 各 4 张</b>，共 36 张<br>
       · 开局每人 1 张手牌，随机座位，按<b>顺时针</b>行动<br>
       · 每回合先摸 1 张，再打出 1 张（9 不能打出）<br>
+      · 手牌上限：<b>你的回合最多 2 张，别人回合最多 1 张</b>；出不了牌时必须弃牌过回合，由<b>你自己选择</b>弃哪张<br>
+      · 对方免疫护盾不豁免手牌上限，超出的牌必须弃掉（9 不能主动弃出；手牌全为 9 时无法弃牌，只能保留）<br>
       · 死亡角色公开手牌并退出；只剩 1 人获胜；<b>牌堆耗尽时按存活手牌大小排名</b>（大者胜）
     </div>
     <table>
@@ -168,11 +170,11 @@ a{color:#07c160;text-decoration:none;}
       <tr><td>2</td><td>看牌：查看一名角色的手牌（仅自己可见）</td></tr>
       <tr><td>3</td><td>比大小：与一名角色各选一张手牌比大小，点数小者死亡，相同无事</td></tr>
       <tr><td>4</td><td>护盾：直到你的下回合开始前，免疫其他角色指向你的牌</td></tr>
-      <tr><td>5</td><td>换牌：指定一名角色（可自己）弃一张手牌，再从牌堆摸一张</td></tr>
+      <tr><td>5</td><td>换牌：指定一名角色（可自己）弃一张手牌（9 不能弃），再从牌堆摸一张</td></tr>
       <tr><td>6</td><td>观星：查看牌堆顶 2 张牌，按任意顺序放回</td></tr>
       <tr><td>7</td><td>交换：令两名角色（可含自己）交换全部手牌</td></tr>
       <tr><td>8</td><td>强制：若你手中有 5 或 7，本回合必须打出；也可主动打出（无效果）</td></tr>
-      <tr><td>9</td><td>死亡牌：不能打出，也不能用于比大小，打出即死亡</td></tr>
+      <tr><td>9</td><td>死亡牌：不能打出，也不能用于比大小，<b>不能主动弃出</b>，打出即死亡</td></tr>
     </table>
   </div>
 </div>
@@ -441,7 +443,9 @@ function renderHand(){
   area.classList.remove('hidden');
   const box = document.getElementById('handCards');
   const must8 = (state.hand.indexOf(8)>-1) && (state.hand.indexOf(5)>-1 || state.hand.indexOf(7)>-1);
-  document.getElementById('handHint').textContent = must8 ? '手中有5或7，必须打出8' : '';
+  const limit = (state.turn_uid===myUid) ? 2 : 1;
+  const limitHint = '上限 '+limit+' 张' + (state.turn_uid===myUid ? '（你的回合）' : '（别人回合）');
+  document.getElementById('handHint').textContent = must8 ? ('手中有5或7，必须打出8 · '+limitHint) : limitHint;
   let html = '';
   state.hand.forEach((c,i)=>{
     const sel = selectedCard===i ? ' sel' : '';
@@ -465,10 +469,12 @@ function renderAction(){
   } else if(state.status==='playing'){
     if(state.pending){
       if(state.pending.type==='compare_choose') tipHtml = '<b>比大小：</b>对方亮出了牌，请选择你要比的手牌';
-      else if(state.pending.type==='discard_choose') tipHtml = '<b>换牌：</b>请选择要弃掉的一张手牌';
+      else if(state.pending.type==='discard_choose') tipHtml = '<b>换牌：</b>请选择要弃掉的一张手牌（9 除外）';
+      else if(state.pending.type==='overflow_discard') tipHtml = '<b>手牌超限：</b>请弃掉一张手牌（9 除外）';
       else if(state.pending.type==='stargaze_choose') tipHtml = '<b>观星：</b>点击一张牌作为放回牌堆顶的牌';
       else if(state.pending.type==='compare_wait') tipHtml = '已亮出 <b>'+state.pending.my_card+'</b>，等待对方选牌…';
       else if(state.pending.type==='discard_other') tipHtml = '等待对方弃牌…';
+      else if(state.pending.type==='overflow_other') tipHtml = '等待对方弃牌…';
       else if(state.pending.type==='stargaze_other') tipHtml = '等待对方观星…';
       else if(state.pending.type==='compare_other') tipHtml = '正在比大小，等待对方选牌…';
     } else if(state.turn_uid!==myUid){
@@ -477,8 +483,8 @@ function renderAction(){
     } else {
       if(state.phase==='draw') tipHtml = '轮到你，正在摸牌…';
       else {
-        tipHtml = '<b>轮到你出牌：</b>点击下方手牌';
-        btnHtml = '<button class="op-btn gray" onclick="passTurn()">跳过出牌</button>';
+        tipHtml = '<b>轮到你出牌：</b>点击下方手牌；出不了牌就弃牌过回合（9 除外）';
+        btnHtml = '<button class="op-btn gray" onclick="passTurn()">弃牌过回合</button>';
       }
     }
   } else if(state.status==='finished'){
@@ -494,6 +500,8 @@ function renderPending(){
     showCompareChooseModal();
   } else if(p.type==='discard_choose'){
     showDiscardModal();
+  } else if(p.type==='overflow_discard'){
+    showOverflowDiscardModal();
   } else if(p.type==='stargaze_choose'){
     showStargazeModal();
   }
@@ -717,24 +725,32 @@ function confirmDiscardTarget(){
   closeModal();
   doPlay({card_id:card, target_id:picks[0]});
 }
-// 被指定弃牌
+// 被指定弃牌（卡5换牌效果：弃一张摸一张，9 不能弃）
 function showDiscardModal(){
-  const hand = state.hand;
+  showPickDiscardModal('换牌 · 选择要弃的牌', '你被指定换牌：弃一张手牌，再从牌堆摸一张（9 不能弃）', 'discard_choose');
+}
+// 手牌超出上限时弃牌（自己选择弃哪张，9 不能弃）
+function showOverflowDiscardModal(){
+  showPickDiscardModal('弃牌 · 手牌超出上限', '你的手牌超过上限，必须弃掉一张（9 不能弃）', 'overflow_discard');
+}
+// 通用弃牌选择弹层：从手牌中选择一张非 9 的牌弃掉
+function showPickDiscardModal(title, desc, actionName){
+  const hand = state.hand.filter(c=>c!==9);
   const box = document.getElementById('modal');
-  let html = '<div class="m-box"><div class="m-head"><span class="t">换牌 · 选择要弃的牌</span><button class="x" onclick="closeModal()">×</button></div>';
-  html += '<div class="m-body"><div class="small-cards">';
+  let html = '<div class="m-box"><div class="m-head"><span class="t">'+esc(title)+'</span><button class="x" onclick="closeModal()">×</button></div>';
+  html += '<div class="m-body"><p style="font-size:13px;color:#666;margin-bottom:8px;">'+esc(desc)+'</p><div class="small-cards">';
   hand.forEach(c=>{
     html += '<button class="small-card" data-c="'+c+'" onclick="toggleCompareCard(this)">'+c+'</button>';
   });
-  html += '</div></div><div class="m-foot"><button class="ok" onclick="confirmDiscardChoose()">弃牌</button></div></div>';
+  html += '</div></div><div class="m-foot"><button class="ok" onclick="confirmPickDiscard()">确认弃牌</button></div></div>';
   box.innerHTML = html; box.classList.remove('hidden');
-  box._myCard = null;
+  box._myCard = null; box._action = actionName;
 }
-function confirmDiscardChoose(){
+function confirmPickDiscard(){
   const box = document.getElementById('modal');
   if(box._myCard==null){ toast('请选择要弃的牌'); return; }
   closeModal();
-  apiAction({room_id:roomId, action:'discard_choose', card_id:box._myCard}).then(r=>{
+  apiAction({room_id:roomId, action:box._action, card_id:box._myCard}).then(r=>{
     if(!r.ok) toast(r.error||'操作失败');
   });
 }
@@ -793,10 +809,21 @@ async function surrender(){
   if(!r.ok) toast(r.error||'操作失败');
 }
 
-// ---------- 跳过出牌 ----------
+// ---------- 弃牌过回合 ----------
 async function passTurn(){
-  const r = await apiAction({room_id:roomId, action:'pass'});
-  if(!r.ok) toast(r.error||'操作失败');
+  if(!state || state.status!=='playing') return;
+  const discardable = state.hand.filter(c=>c!==9);
+  if(!discardable.length){
+    // 手牌全是9，无法弃牌，直接跳过
+    doPass(null);
+    return;
+  }
+  showPickDiscardModal('弃牌过回合', '你出不了牌，必须弃掉一张牌结束回合（9 不能弃，自己选择）', 'pass');
+}
+function doPass(cardId){
+  apiAction({room_id:roomId, action:'pass', card_id:cardId}).then(r=>{
+    if(!r.ok) toast(r.error||'操作失败');
+  });
 }
 
 // ---------- 自动摸牌 ----------
