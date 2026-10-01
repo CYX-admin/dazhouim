@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""数字大逃杀 · 联机卡牌游戏视图"""
+"""滨江校区游戏1 · 联机卡牌游戏视图"""
 import json
 
 from django.contrib.auth.decorators import login_required

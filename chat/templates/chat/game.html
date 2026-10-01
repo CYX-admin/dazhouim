@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>数字大逃杀 - 大周IM</title>
+<title>滨江校区游戏1 - 大周IM</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f2f3f5;color:#1a1a1a;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
@@ -139,8 +139,8 @@ a{color:#07c160;text-decoration:none;}
 <!-- 大厅 -->
 <div id="view-lobby">
   <div class="hero">
-    <h1>数字大逃杀</h1>
-    <p>2-6 人联机卡牌对战 · 牌堆 36 张（1×6、2-8 各×4、9×2）<br>每回合摸 1 张、打出 1 张，手牌上限 2 张（别人回合 1 张），用牌技活到最后</p>
+    <h1>滨江校区游戏1</h1>
+    <p>2-6 人联机卡牌对战 · 每回合摸 1 张、打出 1 张，活到最后获胜</p>
     <div class="btns">
       <button class="btn" onclick="createRoom()">创建房间</button>
       <button class="btn second" onclick="document.getElementById('joinInput').focus()">加入房间</button>
@@ -157,13 +157,7 @@ a{color:#07c160;text-decoration:none;}
   <div class="rules">
     <h3>游戏规则</h3>
     <div class="line">
-      · 扑克牌去掉大小王和 J/Q/K，只用数字 1-9，不看花色<br>
-      · 牌堆：<b>1 有 6 张、9 有 2 张、2-8 各 4 张</b>，共 36 张<br>
-      · 开局每人 1 张手牌，随机座位，按<b>顺时针</b>行动<br>
-      · 每回合先摸 1 张，再打出 1 张（9 不能打出）<br>
-      · 手牌上限：<b>你的回合最多 2 张，别人回合最多 1 张</b>；出不了牌时必须弃牌过回合，由<b>你自己选择</b>弃哪张<br>
-      · 对方免疫护盾不豁免手牌上限，超出的牌必须弃掉（9 不能主动弃出；手牌全为 9 时无法弃牌，只能保留）<br>
-      · 死亡角色公开手牌并退出；只剩 1 人获胜；<b>牌堆耗尽时按存活手牌大小排名</b>（大者胜）
+      开局每人 1 张手牌，每回合摸 1 张、打出 1 张（9 不能打出），出不了牌就弃一张（9 除外）过回合，活到最后获胜
     </div>
     <table>
       <tr><td>1</td><td>猜牌：猜一名角色的一张手牌点数，猜对则对方死亡</td></tr>
@@ -193,7 +187,7 @@ a{color:#07c160;text-decoration:none;}
   </div>
   <div class="room-body">
     <div id="timeoutNotice" class="hidden" style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 12px;font-size:12px;color:#795548;margin:0 12px 8px;line-height:1.6;">
-      超时规则：轮到您行动后 <b>90 秒</b>内未响应，系统将自动跳过您的回合；若轮到您响应（比大小/弃牌/观星）超过 <b>60 秒</b>未操作，系统将自动处理。掉线玩家会显示「离线」标记，对局不会因等待而卡住。
+      超时 90 秒未操作将自动跳过回合，响应等待超过 60 秒将自动处理，对局不会卡住。
     </div>
     <div id="seatArea"></div>
     <div id="logArea"></div>

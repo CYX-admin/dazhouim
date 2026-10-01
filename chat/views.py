@@ -492,6 +492,7 @@ def account_view(request):
         'signature': profile.signature,
         'status': profile.status,
         'status_choices': UserProfile.STATUS_CHOICES,
+        'email_verification_required': settings.EMAIL_VERIFICATION_REQUIRED,
         'error': error,
         'success': success,
     })
@@ -539,7 +540,7 @@ def chat_room(request):
             'other_id': other.id,
             'last_message': (last_msg.content[:50] if last_msg and last_msg.content
                              else ('[附件]' if last_msg and last_msg.attachment else '')),
-            'last_time': timezone.localtime(last_msg.timestamp).strftime('%m-%d %H:%M') if last_msg else '',
+            'last_time': timezone.localtime(last_msg.timestamp).strftime('%Y-%m-%d %H:%M') if last_msg else '',
             'unread': unread,
             'is_pinned': c.is_pinned_for(request.user),
             'is_muted': c.is_muted_for(request.user),
@@ -559,7 +560,7 @@ def chat_room(request):
             'name': g.name,
             'last_message': (last_msg.content[:50] if last_msg and last_msg.content
                              else ('[附件]' if last_msg and last_msg.attachment else '')),
-            'last_time': timezone.localtime(last_msg.timestamp).strftime('%m-%d %H:%M') if last_msg else '',
+            'last_time': timezone.localtime(last_msg.timestamp).strftime('%Y-%m-%d %H:%M') if last_msg else '',
             'unread': unread,
             'member_count': g.member_count(),
         })
@@ -698,7 +699,7 @@ def all_users(request):
         online = bool(p and p.last_active and p.last_active >= cutoff)
         last_active = ''
         if p and p.last_active:
-            last_active = timezone.localtime(p.last_active).strftime('%m-%d %H:%M')
+            last_active = timezone.localtime(p.last_active).strftime('%Y-%m-%d %H:%M')
         data.append({
             'id': u.id,
             'username': u.username,
@@ -783,7 +784,7 @@ def private_chat_list(request):
             'other_id': other.id,
             'last_message': (last_msg.content[:50] if last_msg and last_msg.content
                              else ('[附件]' if last_msg and last_msg.attachment else '')),
-            'last_time': timezone.localtime(last_msg.timestamp).strftime('%m-%d %H:%M') if last_msg else '',
+            'last_time': timezone.localtime(last_msg.timestamp).strftime('%Y-%m-%d %H:%M') if last_msg else '',
             'unread': unread,
             'is_pinned': c.is_pinned_for(request.user),
             'is_muted': c.is_muted_for(request.user),
@@ -812,7 +813,7 @@ def api_private_list(request):
             'other_id': other.id,
             'last_message': (last_msg.content[:50] if last_msg and last_msg.content
                              else ('[附件]' if last_msg and last_msg.attachment else '')),
-            'last_time': timezone.localtime(last_msg.timestamp).strftime('%m-%d %H:%M') if last_msg else '',
+            'last_time': timezone.localtime(last_msg.timestamp).strftime('%Y-%m-%d %H:%M') if last_msg else '',
             'unread': unread,
             'is_pinned': c.is_pinned_for(request.user),
             'is_muted': c.is_muted_for(request.user),
@@ -1403,7 +1404,7 @@ def group_messages(request, group_id):
             'user_title': _get_user_title(m.sender),
             'user_id': m.sender.id,
             'content': m.content,
-            'time': m.timestamp.strftime('%H:%M'),
+            'time': m.timestamp.strftime('%Y-%m-%d %H:%M'),
             'created_at': int(m.timestamp.timestamp()),
             'is_deleted': m.is_deleted,
             'attachment': attachment_dict(m),
@@ -1701,7 +1702,7 @@ def group_join_requests(request, group_id):
         'user_id': r.user.id,
         'username': r.user.username,
         'message': r.message,
-        'created_at': timezone.localtime(r.created_at).strftime('%m-%d %H:%M'),
+        'created_at': timezone.localtime(r.created_at).strftime('%Y-%m-%d %H:%M'),
     } for r in reqs]
     return JsonResponse({'requests': data, 'count': len(data)})
 
@@ -1930,7 +1931,7 @@ def group_unread_mentions(request, group_id):
                 'id': m.id,
                 'sender': m.sender.username,
                 'content': m.content[:100],
-                'time': m.timestamp.strftime('%H:%M'),
+                'time': m.timestamp.strftime('%Y-%m-%d %H:%M'),
             })
     return JsonResponse({'count': len(mentioned), 'messages': mentioned[:20]})
 

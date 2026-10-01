@@ -40,9 +40,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .avatar-section{display:flex;align-items:center;gap:20px;padding:14px 0;border-bottom:1px solid #eee;}
 .avatar-preview{width:80px;height:80px;border-radius:50%;background:#1a73e8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:600;overflow:hidden;flex-shrink:0;}
 .avatar-preview img{width:100%;height:100%;object-fit:cover;}
-.avatar-upload{flex:1;}
+.avatar-upload{flex:1;min-width:0;}
 .avatar-upload h3{font-size:15px;color:#333;margin-bottom:10px;}
-.avatar-upload input[type=file]{margin-bottom:10px;}
+.avatar-upload form{display:flex;flex-direction:column;align-items:stretch;gap:8px;}
+.avatar-upload input[type=file]{width:100%;padding:8px 0;font-size:13px;box-sizing:border-box;}
+.avatar-upload .upload-btn{align-self:flex-start;background:#1a73e8;color:#fff;border:none;padding:9px 20px;border-radius:6px;font-size:14px;cursor:pointer;}
+.avatar-upload .upload-btn:disabled{background:#a9c6f0;cursor:not-allowed;}
 </style>
 </head>
 <body>
@@ -56,7 +59,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 {% if success %}<div class="success">{{ success }}</div>{% endif %}
 <div class="info-row"><span class="label">用户名</span><span class="value">{{ request.user.username }}</span></div>
 <div class="info-row"><span class="label">昵称</span><span class="value">{{ nickname|default:"未设置" }}</span></div>
-<div class="avatar-section"><div class="avatar-preview">{% if request.user.profile.avatar %}<img src="{{ request.user.profile.avatar.url }}" alt="头像">{% else %}{{ request.user.username|first|upper }}{% endif %}</div><div class="avatar-upload"><h3>头像</h3><form method="post" enctype="multipart/form-data" class="form-inline">{% csrf_token %}<input type="hidden" name="action" value="upload_avatar"><input type="file" name="avatar" accept="image/*"><button type="submit" class="btn-primary">上传头像</button></form></div></div>
+<div class="avatar-section"><div class="avatar-preview" id="avatarPreview">{% if request.user.profile.avatar %}<img src="{{ request.user.profile.avatar.url }}" alt="头像">{% else %}{{ request.user.username|first|upper }}{% endif %}</div><div class="avatar-upload"><h3>头像</h3><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="upload_avatar"><input type="file" name="avatar" accept="image/*" id="avatarFile" onchange="onAvatarPick(this)"><button type="submit" class="upload-btn" id="avatarSubmit">上传头像</button></form><div class="tip" id="avatarTip"></div></div></div>
 <div class="info-row"><span class="label">邮箱</span><span class="value">{{ email|default:"未设置" }}</span></div>
 <div class="info-row">
 <span class="label">邮箱验证状态</span>

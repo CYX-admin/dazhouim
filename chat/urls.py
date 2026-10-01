@@ -77,7 +77,7 @@ urlpatterns = [
     path('api/group/<int:group_id>/join-request/<int:req_id>/handle/', views.group_handle_join_request, name='group_handle_join_request'),
     path('api/groups/all/', views.api_all_groups, name='api_all_groups'),
 
-    # 联机游戏（数字大逃杀）
+    # 联机游戏（滨江校区游戏1）
     path('game/', views_game.game_page, name='game_page'),
     path('game/room/<str:room_id>/', views_game.game_page, name='game_room'),
     path('game/api/rooms/', views_game.api_rooms, name='game_api_rooms'),

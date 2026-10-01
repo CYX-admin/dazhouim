@@ -68,7 +68,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <div class="msg {% if msg.user == request.user %}own{% else %}other{% endif %}" data-id="{{ msg.id }}">
 <div class="avatar" style="background:hsl({{ msg.user.id|stringformat:'d'|last }}0,60%,55%)">{{ msg.user.username|first|upper }}</div>
 <div class="msg-body">
-<div class="meta"><span class="username">{{ msg.user.username }}</span><span class="time">{{ msg.timestamp|date:"H:i" }}</span></div>
+<div class="meta"><span class="username">{{ msg.user.username }}</span><span class="time">{{ msg.timestamp|date:"Y-m-d H:i" }}</span></div>
 {% if msg.is_deleted %}
 <div class="bubble deleted-txt">消息已撤回</div>
 {% else %}

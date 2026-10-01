@@ -145,7 +145,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <div class="msg-body">
 <div class="meta">
 <span class="username">{% if msg.sender == request.user %}{{ request.user.username }}{% if request.user.profile.user_title %}<span class="user-title">@{{ request.user.profile.user_title }}</span>{% endif %}{% else %}{{ other.username }}{% if other.profile.user_title %}<span class="user-title">@{{ other.profile.user_title }}</span>{% endif %}{% endif %}</span>
-<span class="time">{{ msg.timestamp|date:"H:i" }}</span>
+<span class="time">{{ msg.timestamp|date:"Y-m-d H:i" }}</span>
 {% if msg.sender == request.user and not msg.is_deleted %}<button class="recall-btn" onclick="recallMsg({{ msg.id }})">撤回</button>{% endif %}
 </div>
 {% if msg.is_deleted %}
