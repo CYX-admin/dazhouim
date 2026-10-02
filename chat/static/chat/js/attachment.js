@@ -117,6 +117,7 @@
 
   var TEXT_EXTS = ['txt', 'md', 'csv', 'json', 'log', 'xml', 'yaml', 'yml', 'ini', 'conf'];
   var OFFICE_EXTS = ['pptx', 'ppt', 'doc', 'xls', 'xlsm', 'docm', 'odt', 'ods', 'rtf'];
+  var RISK_EXTS = ['exe', 'bat', 'cmd', 'com', 'sh', 'bash', 'py', 'js', 'mjs', 'html', 'htm', 'php', 'jar', 'dll', 'apk', 'msi', 'vbs', 'ps1', 'scr', 'svg', 'phtml', 'shtml', 'cgi', 'pl', 'rb'];
 
   function dlLink(a) {
     return '<a class="att-dl" href="' + a.url + '" download="' + esc(a.name || '') + '" style="margin-left:8px;color:#1a73e8;font-size:12px;text-decoration:none;">下载</a>';
@@ -161,6 +162,13 @@
     /* 其他 Office：微软在线预览 */
     if (a.type === 'office' || OFFICE_EXTS.indexOf(ext) >= 0) {
       return '<div class="attachment"><div style="font-size:12px;color:#888;">' + esc(a.name || 'Office 文档') + previewBtn('在线预览', 'office', a.url) + '</div>' + dl + '</div>';
+    }
+    /* 高风险文件：可执行/脚本/网页等，可能携带病毒或钓鱼内容（允许上传，但醒目警告） */
+    if (a.type === 'risk' || RISK_EXTS.indexOf(ext) >= 0) {
+      return '<div class="attachment" style="border:1px solid #f2c94c;background:#fffbe6;border-radius:6px;padding:8px 10px;max-width:320px;">' +
+        '<div style="font-size:12px;color:#b7791f;font-weight:600;">⚠ 高风险文件</div>' +
+        '<div style="font-size:11px;color:#8a6d3b;margin:3px 0 6px;">可执行/脚本/网页文件，可能携带病毒或钓鱼内容，请确认来源后谨慎下载</div>' +
+        '<div style="font-size:12px;">' + esc(a.name || '附件') + dl + '</div></div>';
     }
     /* 兜底：下载 */
     return '<div class="attachment"><a href="' + a.url + '" target="_blank">' + esc(a.name || '附件') + '</a>' + dl + '</div>';

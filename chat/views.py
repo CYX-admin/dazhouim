@@ -98,11 +98,13 @@ def handle_attachment(request):
         return None, '', '', f'文件过大，最大允许 {settings.MAX_UPLOAD_SIZE // 1024 // 1024}MB'
     name = f.name or 'file'
     ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
-    # 注意：应站长要求“从不限制上传任何文件类型”，已关闭扩展名拦截。
-    # 放开后 exe/bat/html/apk 等文件可被上传并分发，存在传播病毒/钓鱼网页风险，
-    # 如需恢复拦截，取消下行注释即可：
+    # 应站长要求不拦截任何文件类型：可执行/脚本/网页文件正常上传，
+    # 但标记为 risk 类型，前端会对接收方显示高风险警告。
+    # 如需恢复"直接拒绝上传"，取消下行注释：
     # if ext in BLOCKED_EXTS:
     #     return None, '', '', f'不允许上传 {ext} 类型的文件'
+    if ext in BLOCKED_EXTS:
+        return f, name, 'risk', None
     if ext in IMAGE_EXTS:
         return f, name, 'image', None
     if ext in AUDIO_EXTS:
