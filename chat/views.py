@@ -1230,8 +1230,22 @@ def blacklist_list(request):
 def group_list(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     my_groups = GroupChat.objects.filter(members__user=request.user).distinct()
+    groups = []
+    for g in my_groups:
+        last_msg = g.messages.last()
+        my_member = g.members.filter(user=request.user).first()
+        groups.append({
+            'id': g.id,
+            'name': g.name,
+            'description': g.description,
+            'member_count': g.member_count,
+            'my_role': my_member.role if my_member else '',
+            'last_message': (last_msg.content[:50] if last_msg and last_msg.content
+                             else ('[附件]' if last_msg and last_msg.attachment else '')),
+            'last_time': timezone.localtime(last_msg.timestamp).strftime('%Y-%m-%d %H:%M') if last_msg else '',
+        })
     return render(request, 'chat/group_list.html', {
-        'groups': my_groups,
+        'groups': groups,
         'profile': profile,
     })
 
